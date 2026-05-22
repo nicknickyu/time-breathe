@@ -1,0 +1,17 @@
+import { TerrainType } from './TerrainType';
+
+export class HexCellData {
+    terrainType: TerrainType = TerrainType.EMPTY;
+    height: number = 0;
+    readonly gridX: number;
+    readonly gridY: number;
+
+    constructor(gridX: number, gridY: number) {
+        this.gridX = gridX;
+        this.gridY = gridY;
+    }
+
+    isEmpty(): boolean {
+        return this.terrainType === TerrainType.EMPTY;
+    }
+}
