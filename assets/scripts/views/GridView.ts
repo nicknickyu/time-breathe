@@ -66,17 +66,15 @@ export class GridView extends Component {
     }
 
     /**
-     * Update cell's Y position to reflect height stacking.
-     * Each height level shifts the cell up by 8px visually.
+     * Update cell's height stacking (delegates to HexCellView).
+     * Each height level adds a stacked rock tile 32px above.
      */
     setCellHeight(col: number, row: number, height: number): void {
         const key = `${col},${row}`;
         const node = this._cellNodes.get(key);
         if (!node) return;
-        const baseY = this._cellBaseY.get(key);
-        if (baseY === undefined) return;
-        const pos = node.getPosition();
-        node.setPosition(new Vec3(pos.x, baseY + height * 8, pos.z));
+        const view = node.getComponent(HexCellView);
+        if (view) view.setHeight(height);
     }
 
     private _createCellNode(c: number, r: number, gridCenterY: number): void {

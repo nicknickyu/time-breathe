@@ -40,6 +40,7 @@ export class TerrainEvolutionManager {
      * Execute one evolution tick.
      * - ROCK: every 3 ticks, height+1 and copy to adjacent empty
      * - GRASS: each tick, if water within 3 tiles, probability to spread to adjacent empty
+     * - WATER: each tick, 50% chance to spread to adjacent empty (max 3)
      * Returns all cell changes in this tick.
      */
     tick(): TickChange[] {
@@ -53,8 +54,16 @@ export class TerrainEvolutionManager {
 
         // ── 1) ROCK: every 3 ticks, grow + spread ──
         if (this._tickCount % 3 === 0) {
+            // Only cells that were ROCK at the START of this tick can spread
+            const originalRockKeys = new Set<string>();
             for (const cell of snapshot) {
-                if (cell.terrainType !== TerrainType.ROCK) continue;
+                if (cell.terrainType === TerrainType.ROCK) {
+                    originalRockKeys.add(`${cell.gridX},${cell.gridY}`);
+                }
+            }
+
+            for (const cell of snapshot) {
+                if (!originalRockKeys.has(`${cell.gridX},${cell.gridY}`)) continue;
 
                 // Current cell: height +1
                 cell.height += 1;
@@ -145,6 +154,46 @@ export class TerrainEvolutionManager {
             `[Tick ${this._tickCount}] grass: total=${grassTotal}, ` +
             `hasWater=${grassWithWater}, willSpread=${grassWillSpread}`
         );
+
+        // ── 3) WATER: each tick, 50% chance to spread to adjacent empty (max 3) ──
+        const originalWaterKeys = new Set<string>();
+        for (const cell of snapshot) {
+            if (cell.terrainType === TerrainType.WATER) {
+                originalWaterKeys.add(`${cell.gridX},${cell.gridY}`);
+            }
+        }
+
+        const waterCandidates: { col: number; row: number }[] = [];
+        const waterCandidateSet = new Set<string>();
+
+        for (const cell of snapshot) {
+            if (!originalWaterKeys.has(`${cell.gridX},${cell.gridY}`)) continue;
+
+            const neighbors = mgr.getNeighbors(cell.gridX, cell.gridY);
+            for (const n of neighbors) {
+                const key = `${n.col},${n.row}`;
+                if (waterCandidateSet.has(key)) continue;
+                const neighborCell = mgr.getCell(n.col, n.row);
+                if (!neighborCell || !neighborCell.isEmpty()) continue;
+                waterCandidateSet.add(key);
+                waterCandidates.push({ col: n.col, row: n.row });
+            }
+        }
+
+        if (waterCandidates.length > 0 && Math.random() < 0.5) {
+            const count = Math.min(3, waterCandidates.length);
+            for (let i = 0; i < count; i++) {
+                const idx = Math.floor(Math.random() * waterCandidates.length);
+                const target = waterCandidates.splice(idx, 1)[0];
+                mgr.setCellTerrain(target.col, target.row, TerrainType.WATER);
+                changes.push({
+                    col: target.col,
+                    row: target.row,
+                    terrainType: TerrainType.WATER,
+                    height: 0,
+                });
+            }
+        }
 
         // Check if evolution is done after this tick
         if (this._tickCount >= this._maxTicks) {

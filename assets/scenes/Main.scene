@@ -1902,6 +1902,9 @@
       "__uuid__": "d8d64d91-1d93-4c9d-987d-d7db5108181e@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
+    "tickLabel": {
+      "__id__": 41
+    },
     "_id": "d9G5Sx1ntNV45K/n4mEIis"
   },
   {
