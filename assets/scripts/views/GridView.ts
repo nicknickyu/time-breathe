@@ -11,6 +11,7 @@ export class GridView extends Component {
 
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _cellNodes: Map<string, Node> = new Map();
+    private _cellBaseY: Map<string, number> = new Map();
     private _onCellTapCb: ((col: number, row: number) => void) | null = null;
 
     /**
@@ -64,6 +65,20 @@ export class GridView extends Component {
         return this._cellNodes;
     }
 
+    /**
+     * Update cell's Y position to reflect height stacking.
+     * Each height level shifts the cell up by 8px visually.
+     */
+    setCellHeight(col: number, row: number, height: number): void {
+        const key = `${col},${row}`;
+        const node = this._cellNodes.get(key);
+        if (!node) return;
+        const baseY = this._cellBaseY.get(key);
+        if (baseY === undefined) return;
+        const pos = node.getPosition();
+        node.setPosition(new Vec3(pos.x, baseY + height * 8, pos.z));
+    }
+
     private _createCellNode(c: number, r: number, gridCenterY: number): void {
         const mgr = HexGridManager.instance;
         const node = instantiate(this.hexCellPrefab);
@@ -76,6 +91,9 @@ export class GridView extends Component {
         const x = (c - (mgr.cols - 1) / 2) * mgr.SPACING_X;
         const y = -(r * mgr.SPACING_Y + (c % 2) * mgr.SPACING_Y / 2) + gridCenterY;
         node.setPosition(new Vec3(x, y, 0));
+
+        // Store base Y for height adjustment
+        this._cellBaseY.set(`${c},${r}`, y);
 
         this.node.addChild(node);
 

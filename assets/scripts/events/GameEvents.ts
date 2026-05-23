@@ -17,4 +17,11 @@ export class GameEvents {
 
     // 所有手牌已放置完毕
     static readonly ALL_PLACED = 'all-placed';
+
+    // 演化阶段
+    static readonly EVOLUTION_TICK = 'evolution-tick';
+    static readonly EVOLUTION_COMPLETE = 'evolution-complete';
+
+    // 评分更新
+    static readonly SCORE_UPDATED = 'score-updated';
 }

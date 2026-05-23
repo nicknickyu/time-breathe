@@ -3,6 +3,8 @@ import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
 import { GameStateManager, GamePhase } from '../logic/GameStateManager';
+import { TerrainEvolutionManager } from '../logic/TerrainEvolutionManager';
+import { ScoreManager } from '../logic/ScoreManager';
 import { GridView } from '../views/GridView';
 import { DrawPanelView } from '../views/DrawPanelView';
 import { HandCardView } from '../views/HandCardView';
@@ -30,11 +32,19 @@ export class GameController extends Component {
     @property(SpriteFrame)
     waterSprite: SpriteFrame | null = null;
 
+    // ── Tick progress (drag from Hierarchy) ──
+
+    @property(Label)
+    tickLabel: Label | null = null;
+
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _gridView: GridView | null = null;
     private _handCardView: HandCardView | null = null;
     private _drawPanelView: DrawPanelView | null = null;
     private _selectedHandIndex: number = -1;
+    private _currentRound: number = 1;
+    private _maxRounds: number = 3;
+    private _tickCount: number = 0;
 
     start(): void {
         // Build sprite frame map from editor-assigned references
@@ -79,8 +89,9 @@ export class GameController extends Component {
             this._drawPanelView = panelNode.getComponent(DrawPanelView);
         }
 
-        // 5) Round / score labels
+        // 5) Find score / round UI
         this._updateRoundLabel();
+        this._updateScoreLabel();
 
         // 6) Start first draw
         this._startDrawPhase();
@@ -89,6 +100,7 @@ export class GameController extends Component {
     // ── Game phase flow ──
 
     private _startDrawPhase(): void {
+        this._clearTickLabel();
         DrawManager.instance.generateGroups();
         GameStateManager.instance.setState(GamePhase.DRAW);
 
@@ -134,6 +146,8 @@ export class GameController extends Component {
     }
 
     private _onGridCellTapped(col: number, row: number): void {
+        // Only allow placement during PLACE phase (not during evolution)
+        if (GameStateManager.instance.phase !== GamePhase.PLACE) return;
         if (this._selectedHandIndex < 0) return;
 
         const mgr = HexGridManager.instance;
@@ -153,7 +167,71 @@ export class GameController extends Component {
         this._selectedHandIndex = -1;
 
         if (!DrawManager.instance.hasMoreTiles()) {
-            this.scheduleOnce(() => this._startDrawPhase(), 0.4);
+            this.scheduleOnce(() => this._startEvolutionPhase(), 0.4);
+        }
+    }
+
+    // ── Evolution phase ──
+
+    private _startEvolutionPhase(): void {
+        GameStateManager.instance.setState(GamePhase.EVOLVE);
+
+        // Hide hand cards
+        if (this._handCardView) this._handCardView.clear();
+        this._selectedHandIndex = -1;
+
+        this._tickCount = 0;
+        TerrainEvolutionManager.instance.startEvolution(6);
+        this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+    }
+
+    private _doEvolutionTick(): void {
+        this._tickCount++;
+        const changes = TerrainEvolutionManager.instance.tick();
+
+        // Apply visual updates for every change
+        for (const change of changes) {
+            if (this._gridView) {
+                this._gridView.updateCellVisual(change.col, change.row, change.terrainType);
+                this._gridView.setCellHeight(change.col, change.row, change.height);
+            }
+        }
+
+        // Update tick progress label
+        this._updateTickLabel();
+
+        if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
+            this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+        } else {
+            this._onEvolutionComplete();
+        }
+    }
+
+    private _onEvolutionComplete(): void {
+        // Clear tick progress label
+        this._clearTickLabel();
+        // Calculate and accumulate score
+        const roundScore = ScoreManager.instance.calculateRoundScore();
+        ScoreManager.instance.addRoundScore(roundScore);
+        this._updateScoreLabel();
+
+        // Advance to next round
+        this._currentRound++;
+        if (this._currentRound <= this._maxRounds) {
+            this._updateRoundLabel();
+            this._startDrawPhase();
+        } else {
+            // Game over — show final score
+            const roundLabel = this._findDescendant('RoundLabel');
+            if (roundLabel) {
+                const label = roundLabel.getComponent(Label);
+                if (label) label.string = 'Game Over';
+            }
+            const scoreLabel = this._findDescendant('ScoreLabel');
+            if (scoreLabel) {
+                const label = scoreLabel.getComponent(Label);
+                if (label) label.string = `总分: ${ScoreManager.instance.totalScore}`;
+            }
         }
     }
 
@@ -163,7 +241,27 @@ export class GameController extends Component {
         const roundLabel = this._findDescendant('RoundLabel');
         if (roundLabel) {
             const label = roundLabel.getComponent(Label);
-            if (label) label.string = 'Round 1';
+            if (label) label.string = `Round ${this._currentRound}`;
+        }
+    }
+
+    private _updateScoreLabel(): void {
+        const scoreLabel = this._findDescendant('ScoreLabel');
+        if (scoreLabel) {
+            const label = scoreLabel.getComponent(Label);
+            if (label) label.string = `${ScoreManager.instance.totalScore}`;
+        }
+    }
+
+    private _updateTickLabel(): void {
+        if (this.tickLabel) {
+            this.tickLabel.string = `${this._tickCount}/${TerrainEvolutionManager.instance.maxTicks}`;
+        }
+    }
+
+    private _clearTickLabel(): void {
+        if (this.tickLabel) {
+            this.tickLabel.string = '';
         }
     }
 
