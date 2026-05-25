@@ -30,6 +30,10 @@ export class ScoreManager {
         this._totalScore += roundScore;
     }
 
+    addAnimalScore(count: number): void {
+        this._totalScore += count * 5;
+    }
+
     reset(): void {
         this._totalScore = 0;
     }

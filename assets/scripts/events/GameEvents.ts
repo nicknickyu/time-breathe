@@ -24,4 +24,9 @@ export class GameEvents {
 
     // 评分更新
     static readonly SCORE_UPDATED = 'score-updated';
+
+    // 动物
+    static readonly ANIMAL_GENERATED = 'animal-generated';
+    static readonly ANIMAL_SETTLED = 'animal-settled';
+    static readonly SETTLEMENT_COMPLETE = 'settlement-complete';
 }

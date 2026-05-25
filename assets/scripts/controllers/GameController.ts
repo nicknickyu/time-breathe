@@ -1,4 +1,4 @@
-import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label } from 'cc';
+import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label, Vec3 } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
@@ -8,6 +8,9 @@ import { ScoreManager } from '../logic/ScoreManager';
 import { GridView } from '../views/GridView';
 import { DrawPanelView } from '../views/DrawPanelView';
 import { HandCardView } from '../views/HandCardView';
+import { AnimalType } from '../data/AnimalData';
+import { AnimalSettlementManager } from '../logic/AnimalSettlementManager';
+import { AnimalView } from '../views/AnimalView';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameController')
@@ -40,11 +43,29 @@ export class GameController extends Component {
     @property(Node)
     handCardsContainer: Node | null = null;
 
+    @property(Prefab)
+    animalPrefab: Prefab | null = null;
+
+    @property(Node)
+    targetAnimalsContainer: Node | null = null;
+
+    @property(SpriteFrame)
+    buffaloSprite: SpriteFrame | null = null;
+
+    @property(SpriteFrame)
+    owlSprite: SpriteFrame | null = null;
+
+    @property(SpriteFrame)
+    hippoSprite: SpriteFrame | null = null;
+
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _gridView: GridView | null = null;
     private _handCardView: HandCardView | null = null;
     private _drawPanelView: DrawPanelView | null = null;
     private _selectedHandIndex: number = -1;
+    private _animalSpriteFrames: Map<AnimalType, SpriteFrame> = new Map();
+    private _settleAnimalIndex: number = 0;
+    private _targetAnimalViews: AnimalView[] = [];
     private _currentRound: number = 1;
     private _maxRounds: number = 3;
     private _tickCount: number = 0;
@@ -62,6 +83,12 @@ export class GameController extends Component {
         map.set(TerrainType.ROCK, this.rockSprite!);
         map.set(TerrainType.WATER, this.waterSprite!);
         this._spriteFrames = map;
+    }
+
+    private _initAnimalSprites(): void {
+        this._animalSpriteFrames.set(AnimalType.BISON, this.buffaloSprite!);
+        this._animalSpriteFrames.set(AnimalType.OWL, this.owlSprite!);
+        this._animalSpriteFrames.set(AnimalType.HIPPO, this.hippoSprite!);
     }
 
     // ── Initialization ──
@@ -97,8 +124,43 @@ export class GameController extends Component {
         this._updateRoundLabel();
         this._updateScoreLabel();
 
-        // 6) Start first draw
-        this._startDrawPhase();
+        // 6) Init animal sprites and start target animal phase
+        this._initAnimalSprites();
+        this._startTargetAnimalPhase();
+    }
+
+    // ── Target animal generation phase ──
+
+    private _startTargetAnimalPhase(): void {
+        AnimalSettlementManager.instance.generateTargetAnimals();
+        this._showTargetAnimal(0);
+    }
+
+    private _showTargetAnimal(index: number): void {
+        const animals = AnimalSettlementManager.instance.targetAnimals;
+        if (index >= animals.length) {
+            this._startDrawPhase();
+            return;
+        }
+
+        const animal = animals[index];
+        const spriteFrame = this._animalSpriteFrames.get(animal.type);
+
+        if (spriteFrame && this.animalPrefab && this.targetAnimalsContainer) {
+            const node = instantiate(this.animalPrefab);
+            const spacingX = 160;
+            const localX = (index - (animals.length - 1) / 2) * spacingX;
+            node.setPosition(new Vec3(localX, 0, 0));
+            node.setScale(new Vec3(1.2, 1.2, 1));
+            // Add to scene first so AnimalView.onLoad fires
+            this.targetAnimalsContainer.addChild(node);
+
+            const view = node.addComponent(AnimalView);
+            view.init(spriteFrame, animal.totalCount);
+            this._targetAnimalViews.push(view);
+        }
+
+        this.scheduleOnce(() => this._showTargetAnimal(index + 1), 0.5);
     }
 
     // ── Game phase flow ──
@@ -212,29 +274,87 @@ export class GameController extends Component {
     }
 
     private _onEvolutionComplete(): void {
-        // Clear tick progress label
         this._clearTickLabel();
-        // Calculate and accumulate score
         const roundScore = ScoreManager.instance.calculateRoundScore();
         ScoreManager.instance.addRoundScore(roundScore);
         this._updateScoreLabel();
 
-        // Advance to next round
         this._currentRound++;
         if (this._currentRound <= this._maxRounds) {
             this._updateRoundLabel();
             this._startDrawPhase();
         } else {
-            // Game over — show final score
-            const roundLabel = this._findDescendant('RoundLabel');
-            if (roundLabel) {
-                const label = roundLabel.getComponent(Label);
-                if (label) label.string = 'Game Over';
+            this._startSettlementPhase();
+        }
+    }
+
+    // ── Settlement phase ──
+
+    private _startSettlementPhase(): void {
+        GameStateManager.instance.setState(GamePhase.SETTLE);
+        if (this._handCardView) this._handCardView.clear();
+        this._selectedHandIndex = -1;
+        this._settleAnimalIndex = 0;
+        this._settleNextAnimalType();
+    }
+
+    private _settleNextAnimalType(): void {
+        const animals = AnimalSettlementManager.instance.targetAnimals;
+        if (this._settleAnimalIndex >= animals.length) {
+            this._onAllAnimalsSettled();
+            return;
+        }
+
+        const animal = animals[this._settleAnimalIndex];
+        const validCells = AnimalSettlementManager.instance.getValidCells(animal.type);
+        const settleCount = Math.min(validCells.length, animal.totalCount - animal.settledCount);
+        const spriteFrame = this._animalSpriteFrames.get(animal.type);
+
+        for (let i = 0; i < settleCount; i++) {
+            const cell = validCells[i];
+            if (this.animalPrefab && spriteFrame) {
+                const animalNode = instantiate(this.animalPrefab);
+                animalNode.setScale(new Vec3(0.6, 0.6, 1));
+                // Add to grid cell first so AnimalView.onLoad fires
+                if (this._gridView) {
+                    this._gridView.addAnimalToCell(cell.col, cell.row, animalNode);
+                }
+
+                const view = animalNode.addComponent(AnimalView);
+                view.init(spriteFrame, null);
             }
-            const scoreLabel = this._findDescendant('ScoreLabel');
-            if (scoreLabel) {
-                const label = scoreLabel.getComponent(Label);
-                if (label) label.string = `总分: ${ScoreManager.instance.totalScore}`;
+        }
+
+        animal.settledCount += settleCount;
+        this._updateTargetAnimalCount(this._settleAnimalIndex);
+        ScoreManager.instance.addAnimalScore(settleCount);
+        this._updateScoreLabel();
+
+        this._settleAnimalIndex++;
+        this.scheduleOnce(() => this._settleNextAnimalType(), 0.5);
+    }
+
+    private _onAllAnimalsSettled(): void {
+        const roundLabel = this._findDescendant('RoundLabel');
+        if (roundLabel) {
+            const label = roundLabel.getComponent(Label);
+            if (label) label.string = 'Game Over';
+        }
+        const scoreLabel = this._findDescendant('ScoreLabel');
+        if (scoreLabel) {
+            const label = scoreLabel.getComponent(Label);
+            if (label) label.string = `总分: ${ScoreManager.instance.totalScore}`;
+        }
+    }
+
+    private _updateTargetAnimalCount(index: number): void {
+        const animal = AnimalSettlementManager.instance.targetAnimals[index];
+        const remaining = animal.totalCount - animal.settledCount;
+        if (this._targetAnimalViews[index]) {
+            if (remaining <= 0) {
+                this._targetAnimalViews[index].hideCount();
+            } else {
+                this._targetAnimalViews[index].setCount(remaining);
             }
         }
     }

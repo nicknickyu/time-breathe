@@ -77,6 +77,13 @@ export class GridView extends Component {
         if (view) view.setHeight(height);
     }
 
+    addAnimalToCell(col: number, row: number, animalNode: Node): void {
+        const cellNode = this._cellNodes.get(`${col},${row}`);
+        if (!cellNode) return;
+        animalNode.setPosition(new Vec3(0, 40, 0));
+        cellNode.addChild(animalNode);
+    }
+
     private _createCellNode(c: number, r: number, gridCenterY: number): void {
         const mgr = HexGridManager.instance;
         const node = instantiate(this.hexCellPrefab);

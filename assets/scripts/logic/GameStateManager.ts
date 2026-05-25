@@ -6,6 +6,7 @@ export enum GamePhase {
     DRAW = 'draw',
     PLACE = 'place',
     EVOLVE = 'evolve',
+    SETTLE = 'settle',
     SCORE = 'score',
 }
 

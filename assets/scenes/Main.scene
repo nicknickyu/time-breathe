@@ -1671,6 +1671,25 @@
     "handCardsContainer": {
       "__id__": 34
     },
+    "animalPrefab": {
+      "__uuid__": "bf546afd-3317-430f-b026-93d1453e1a1e",
+      "__expectedType__": "cc.Prefab"
+    },
+    "targetAnimalsContainer": {
+      "__id__": 37
+    },
+    "buffaloSprite": {
+      "__uuid__": "ccf1de8a-4122-4358-be99-df08ee5bf432@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "owlSprite": {
+      "__uuid__": "724e59b7-cf8b-41c4-8a83-5d2d939e5848@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "hippoSprite": {
+      "__uuid__": "4b9d4187-02e2-40a3-a864-c6ac2fe8670e@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
     "_id": "d9G5Sx1ntNV45K/n4mEIis"
   },
   {
