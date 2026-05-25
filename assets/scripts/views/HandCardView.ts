@@ -8,6 +8,9 @@ export class HandCardView extends Component {
     @property(Prefab)
     hexCellPrefab: Prefab | null = null;
 
+    @property(Node)
+    handCardsContainer: Node | null = null;
+
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _cardNodes: Node[] = [];
     private _currentTiles: TerrainType[] = [];
@@ -24,8 +27,7 @@ export class HandCardView extends Component {
         this._currentTiles = [...tiles];
         this._selectedIndex = -1;
 
-        const startY = 120;
-        const spacing = 120;
+        const spacingX = 140;
 
         for (let i = 0; i < tiles.length; i++) {
             let node: Node;
@@ -45,8 +47,10 @@ export class HandCardView extends Component {
                 uiTransform.height = 89;
             }
 
-            // Position on the right side of the screen
-            node.setPosition(new Vec3(280, startY - i * spacing, 0));
+            // Position centered within the container
+            const container = this.handCardsContainer;
+            const localX = (i - (tiles.length - 1) / 2) * spacingX;
+            node.setPosition(new Vec3(localX, 0, 0));
             node.setScale(new Vec3(0.9, 0.9, 1));
 
             node.on(Node.EventType.TOUCH_END, () => {
@@ -56,7 +60,11 @@ export class HandCardView extends Component {
                 }
             });
 
-            this.node.addChild(node);
+            if (container) {
+                container.addChild(node);
+            } else {
+                this.node.addChild(node);
+            }
             this._cardNodes.push(node);
         }
     }

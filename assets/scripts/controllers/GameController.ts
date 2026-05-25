@@ -37,6 +37,9 @@ export class GameController extends Component {
     @property(Label)
     tickLabel: Label | null = null;
 
+    @property(Node)
+    handCardsContainer: Node | null = null;
+
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _gridView: GridView | null = null;
     private _handCardView: HandCardView | null = null;
@@ -80,6 +83,7 @@ export class GameController extends Component {
         this.node.addChild(handRoot);
         this._handCardView = handRoot.addComponent(HandCardView);
         this._handCardView.init(this.hexCellPrefab, this._spriteFrames);
+        this._handCardView.handCardsContainer = this.handCardsContainer;
         this._handCardView.onCardSelected((index) => this._onHandCardSelected(index));
 
         // 4) Draw panel (instantiate once, show/hide)
