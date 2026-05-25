@@ -77,10 +77,10 @@ export class GridView extends Component {
         if (view) view.setHeight(height);
     }
 
-    addAnimalToCell(col: number, row: number, animalNode: Node): void {
+    addAnimalToCell(col: number, row: number, animalNode: Node, offsetY: number = 40): void {
         const cellNode = this._cellNodes.get(`${col},${row}`);
         if (!cellNode) return;
-        animalNode.setPosition(new Vec3(0, 40, 0));
+        animalNode.setPosition(new Vec3(0, offsetY, 0));
         cellNode.addChild(animalNode);
     }
 

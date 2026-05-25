@@ -295,11 +295,18 @@ export class GameController extends Component {
         if (this._handCardView) this._handCardView.clear();
         this._selectedHandIndex = -1;
         this._settleAnimalIndex = 0;
-        this._settleNextAnimalType();
+        this._settleNextAnimal();
     }
 
-    private _settleNextAnimalType(): void {
+    private _settleNextAnimal(): void {
         const animals = AnimalSettlementManager.instance.targetAnimals;
+
+        // Skip animal types that are fully settled
+        while (this._settleAnimalIndex < animals.length &&
+               animals[this._settleAnimalIndex].settledCount >= animals[this._settleAnimalIndex].totalCount) {
+            this._settleAnimalIndex++;
+        }
+
         if (this._settleAnimalIndex >= animals.length) {
             this._onAllAnimalsSettled();
             return;
@@ -307,31 +314,39 @@ export class GameController extends Component {
 
         const animal = animals[this._settleAnimalIndex];
         const validCells = AnimalSettlementManager.instance.getValidCells(animal.type);
-        const settleCount = Math.min(validCells.length, animal.totalCount - animal.settledCount);
-        const spriteFrame = this._animalSpriteFrames.get(animal.type);
+        const maxSettle = Math.min(validCells.length, animal.totalCount);
 
-        for (let i = 0; i < settleCount; i++) {
-            const cell = validCells[i];
+        if (animal.settledCount < maxSettle) {
+            const cell = validCells[animal.settledCount];
+            const spriteFrame = this._animalSpriteFrames.get(animal.type);
+
             if (this.animalPrefab && spriteFrame) {
                 const animalNode = instantiate(this.animalPrefab);
                 animalNode.setScale(new Vec3(0.6, 0.6, 1));
-                // Add to grid cell first so AnimalView.onLoad fires
+
+                // Adjust Y offset for ROCK cell height (OWL)
+                const cellData = HexGridManager.instance.getCell(cell.col, cell.row);
+                const stackOffset = cellData ? cellData.height * 22 : 0;
                 if (this._gridView) {
-                    this._gridView.addAnimalToCell(cell.col, cell.row, animalNode);
+                    this._gridView.addAnimalToCell(cell.col, cell.row, animalNode, 40 + stackOffset);
                 }
 
                 const view = animalNode.addComponent(AnimalView);
                 view.init(spriteFrame, null);
             }
+
+            animal.settledCount++;
+            this._updateTargetAnimalCount(this._settleAnimalIndex);
+            ScoreManager.instance.addAnimalScore(1);
+            this._updateScoreLabel();
         }
 
-        animal.settledCount += settleCount;
-        this._updateTargetAnimalCount(this._settleAnimalIndex);
-        ScoreManager.instance.addAnimalScore(settleCount);
-        this._updateScoreLabel();
+        // Advance to next type if current type is fully settled or has no valid cells
+        if (animal.settledCount >= maxSettle) {
+            this._settleAnimalIndex++;
+        }
 
-        this._settleAnimalIndex++;
-        this.scheduleOnce(() => this._settleNextAnimalType(), 0.5);
+        this.scheduleOnce(() => this._settleNextAnimal(), 0.5);
     }
 
     private _onAllAnimalsSettled(): void {
