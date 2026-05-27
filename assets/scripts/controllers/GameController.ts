@@ -1,4 +1,5 @@
 import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label, Vec3 } from 'cc';
+import { DialogView } from '../views/DialogView';
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
@@ -50,6 +51,9 @@ export class GameController extends Component {
 
     @property(Prefab)
     animalPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    dialogPrefab: Prefab | null = null;
 
     @property(Node)
     targetAnimalsContainer: Node | null = null;
@@ -378,17 +382,21 @@ export class GameController extends Component {
         this.scheduleOnce(() => this._settleNextAnimal(), 0.5);
     }
 
-    /** 全部动物入住完成：显示 Game Over 和最终总分 */
+    /** 全部动物入住完成：弹出 Game Over 对话框，展示总分 */
     private _onAllAnimalsSettled(): void {
-        const roundLabel = this._findDescendant('RoundLabel');
-        if (roundLabel) {
-            const label = roundLabel.getComponent(Label);
-            if (label) label.string = 'Game Over';
-        }
-        const scoreLabel = this._findDescendant('ScoreLabel');
-        if (scoreLabel) {
-            const label = scoreLabel.getComponent(Label);
-            if (label) label.string = `总分: ${ScoreManager.instance.totalScore}`;
+        if (!this.dialogPrefab) return;
+
+        const dialogNode = instantiate(this.dialogPrefab);
+        this.node.addChild(dialogNode);
+        const dialogView = dialogNode.getComponent(DialogView);
+        if (dialogView) {
+            dialogView.show(
+                `游戏结束\n总分: ${ScoreManager.instance.totalScore}`,
+                () => {
+                    dialogView.hide();
+                    dialogNode.destroy();
+                },
+            );
         }
     }
 
