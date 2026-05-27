@@ -28,7 +28,7 @@ export class GridView extends Component {
         const mgr = HexGridManager.instance;
         if (!this.hexCellPrefab) return;
 
-        const gridCenterY = 250;
+        const gridCenterY = 120;
 
         // Odd-r offset: even cols (higher y) behind, odd cols (shifted lower) on top
         for (let r = 0; r < mgr.rows; r++) {
@@ -98,6 +98,7 @@ export class GridView extends Component {
         if (view) {
             view.setSpriteFrames(this._spriteFrames);
             view.setTerrain(TerrainType.EMPTY);
+            view.setDebugCoord(c, r);
         }
 
         const x = (c - (mgr.cols - 1) / 2) * mgr.SPACING_X;

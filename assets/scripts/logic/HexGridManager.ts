@@ -21,7 +21,7 @@ export class HexGridManager {
     readonly CELL_WIDTH = 65;
     readonly CELL_HEIGHT = 65;
     readonly SPACING_X = 32;
-    readonly SPACING_Y = 97;
+    readonly SPACING_Y = 102;
 
     get cols(): number { return this._cols; }
     get rows(): number { return this._rows; }
@@ -79,22 +79,22 @@ export class HexGridManager {
         if (col % 2 === 1) {
             // 奇数列 — 下方邻格偏移
             candidates = [
-                { col: col - 1, row },
-                { col: col + 1, row },
-                { col, row: row - 1 },
-                { col, row: row + 1 },
-                { col: col - 1, row: row + 1 },
-                { col: col + 1, row: row + 1 },
+                { col: col - 2, row },              //左
+                { col: col + 2, row },              //右
+                { col: col - 1, row},              //左上
+                { col: col + 1, row},              //右上
+                { col: col - 1, row: row + 1 },     //左下
+                { col: col + 1, row: row + 1 },     //右下
             ];
         } else {
             // 偶数列 — 上方邻格偏移
             candidates = [
-                { col: col - 1, row },
-                { col: col + 1, row },
-                { col, row: row - 1 },
-                { col, row: row + 1 },
-                { col: col - 1, row: row - 1 },
-                { col: col + 1, row: row - 1 },
+                { col: col - 2, row },              //左
+                { col: col + 2, row },              //右
+                { col: col - 1, row: row - 1 },     //左上
+                { col: col + 1, row: row - 1 },     //右上
+                { col: col - 1, row},     //左下
+                { col: col + 1, row},     //右下
             ];
         }
         return candidates.filter(n => this.isInBounds(n.col, n.row));

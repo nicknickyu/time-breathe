@@ -1,5 +1,6 @@
-import { _decorator, Component, Sprite, SpriteFrame, UITransform, Color, Node, Vec3 } from 'cc';
+import { _decorator, Component, Sprite, SpriteFrame, UITransform, Color, Node, Vec3, Label } from 'cc';
 import { TerrainType } from '../data/TerrainType';
+import { DEBUG_LABEL } from '../constants/DebugConfig';
 const { ccclass, property } = _decorator;
 
 /** 每个岩石堆叠层的高度偏移像素 */
@@ -17,6 +18,7 @@ export class HexCellView extends Component {
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _currentType: TerrainType = TerrainType.EMPTY;
     private _stackNodes: Node[] = [];
+    private _debugLabel: Label | null = null;
 
     onLoad(): void {
         const uiTransform = this.getComponent(UITransform);
@@ -92,6 +94,17 @@ export class HexCellView extends Component {
             node.destroy();
         }
         this._stackNodes = [];
+    }
+
+    /** 设置调试坐标显示（显示/隐藏受全局 DEBUG_LABEL 控制） */
+    setDebugCoord(col: number, row: number): void {
+        if (!this._debugLabel) {
+            this._debugLabel = this.node.getChildByName('DebugLabel')?.getComponent(Label) ?? null;
+        }
+        if (this._debugLabel) {
+            this._debugLabel.string = `(${col}, ${row})`;
+            this._debugLabel.node.active = DEBUG_LABEL;
+        }
     }
 
     /** 应用当前地形的贴图到 Sprite */

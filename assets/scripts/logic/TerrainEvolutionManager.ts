@@ -48,6 +48,7 @@ export class TerrainEvolutionManager {
      * - ROCK: 每 3 tick 高度 +1 并向邻接空地扩散
      * - GRASS: 若 3 格内有 WATER 则概率向邻接空地扩散
      * - WATER: 50% 概率向邻接空地扩散（最多 3 格）
+     * - EMPTY: 每 tick 侵蚀 1 格 WATER 和 1 格 GRASS（转成 EMPTY）
      * 返回本 tick 所有格子的变化
      */
     tick(): TickChange[] {
@@ -56,12 +57,12 @@ export class TerrainEvolutionManager {
         const changes: TickChange[] = [];
         const mgr = HexGridManager.instance;
 
-        // Snapshot: freeze the cell list before any mutations
+        // 快照：固定本 tick 开始时的格子列表，防止同一 tick 内连锁反应
         const snapshot = mgr.getAllCells();
 
-        // ── 1) ROCK: every 3 ticks, grow + spread ──
+        // ── 1) ROCK: 每 3 tick 生长 + 扩散 ──
         if (this._tickCount % 3 === 0) {
-            // Only cells that were ROCK at the START of this tick can spread
+            // 仅本 tick 开始时就是 ROCK 的格子才能扩散（防止连锁反应）
             const originalRockKeys = new Set<string>();
             for (const cell of snapshot) {
                 if (cell.terrainType === TerrainType.ROCK) {
@@ -72,7 +73,7 @@ export class TerrainEvolutionManager {
             for (const cell of snapshot) {
                 if (!originalRockKeys.has(`${cell.gridX},${cell.gridY}`)) continue;
 
-                // Current cell: height +1
+                // 当前格子：高度 +1
                 cell.height += 1;
                 changes.push({
                     col: cell.gridX,
@@ -81,7 +82,7 @@ export class TerrainEvolutionManager {
                     height: cell.height,
                 });
 
-                // Spread to a random adjacent empty cell
+                // 随机扩散到邻接空地
                 const neighbors = mgr.getNeighbors(cell.gridX, cell.gridY);
                 const emptyNeighbors = neighbors.filter(n => {
                     const c = mgr.getCell(n.col, n.row);
@@ -103,8 +104,8 @@ export class TerrainEvolutionManager {
             }
         }
 
-        // ── 2) GRASS: each tick, water within 3 tiles, at most 1 spread per cell ──
-        // Only cells that were GRASS at the START of this tick can spread
+        // ── 2) GRASS: 每 tick 检查 3 格内是否有水，有则向邻接空地扩散（每格最多 1 次）──
+        // 仅本 tick 开始时就是 GRASS 的格子才能扩散
         const originalGrassKeys = new Set<string>();
         for (const cell of snapshot) {
             if (cell.terrainType === TerrainType.GRASS) {
@@ -119,15 +120,15 @@ export class TerrainEvolutionManager {
         const grassTargets = new Set<string>();
 
         for (const cell of snapshot) {
-            // Skip cells that weren't originally GRASS (prevents chain reaction)
+            // 跳过本 tick 内新变成 GRASS 的格子（防止连锁反应）
             if (!originalGrassKeys.has(`${cell.gridX},${cell.gridY}`)) continue;
             grassTotal++;
 
-            // Only spread if water is within 3 ticks
+            // 仅当 3 格范围内有水时才扩散
             if (!this._hasWaterWithinRange(cell.gridX, cell.gridY, 3)) continue;
             grassWithWater++;
 
-            // Collect all empty neighbors that aren't already claimed
+            // 收集未被其他 GRASS 格占用的邻接空地
             const emptyNeighbors: { col: number; row: number }[] = [];
             const neighbors = mgr.getNeighbors(cell.gridX, cell.gridY);
             for (const n of neighbors) {
@@ -139,8 +140,8 @@ export class TerrainEvolutionManager {
                 emptyNeighbors.push({ col: n.col, row: n.row });
             }
 
-            // At most 1 spread per GRASS cell per tick
-            if (emptyNeighbors.length > 0 && Math.random() < 0.8) {
+            // 每 GRASS 格每 tick 最多扩散 1 次
+            if (emptyNeighbors.length > 0 && Math.random() < 0.9) {
                 grassWillSpread++;
                 const target = emptyNeighbors[Math.floor(Math.random() * emptyNeighbors.length)];
                 const key = `${target.col},${target.row}`;
@@ -162,7 +163,7 @@ export class TerrainEvolutionManager {
             `hasWater=${grassWithWater}, willSpread=${grassWillSpread}`
         );
 
-        // ── 3) WATER: each tick, 50% chance to spread to adjacent empty (max 3) ──
+        // ── 3) WATER: 每 tick 50% 概率向邻接空地扩散（最多 3 格）──
         const originalWaterKeys = new Set<string>();
         for (const cell of snapshot) {
             if (cell.terrainType === TerrainType.WATER) {
@@ -202,7 +203,50 @@ export class TerrainEvolutionManager {
             }
         }
 
-        // Check if evolution is done after this tick
+        // ── 4) EMPTY 侵蚀：每 tick 全局只侵蚀 1 格 WATER + 1 格 GRASS ──
+        const erosionWaterCandidates: { col: number; row: number }[] = [];
+        const erosionGrassCandidates: { col: number; row: number }[] = [];
+        const erosionTargets = new Set<string>();
+
+        for (const cell of mgr.getAllCells()) {
+            if (cell.terrainType !== TerrainType.EMPTY) continue;
+
+            const neighbors = mgr.getNeighbors(cell.gridX, cell.gridY);
+            for (const n of neighbors) {
+                const key = `${n.col},${n.row}`;
+                if (erosionTargets.has(key)) continue;
+                const c = mgr.getCell(n.col, n.row);
+                if (!c) continue;
+
+                if (c.terrainType === TerrainType.WATER) {
+                    erosionTargets.add(key);
+                    erosionWaterCandidates.push({ col: n.col, row: n.row });
+                } else if (c.terrainType === TerrainType.GRASS) {
+                    erosionTargets.add(key);
+                    erosionGrassCandidates.push({ col: n.col, row: n.row });
+                }
+            }
+        }
+
+        // 每 tick 80% 概率随机侵蚀 1 格 WATER
+        if (erosionWaterCandidates.length > 0 && Math.random() < 0.7) {
+            const target = erosionWaterCandidates[Math.floor(Math.random() * erosionWaterCandidates.length)];
+            mgr.setCellTerrain(target.col, target.row, TerrainType.EMPTY);
+            const c = mgr.getCell(target.col, target.row);
+            if (c) c.height = 0;
+            changes.push({ col: target.col, row: target.row, terrainType: TerrainType.EMPTY, height: 0 });
+        }
+
+        // 每 tick 80% 概率随机侵蚀 1 格 GRASS
+        if (erosionGrassCandidates.length > 0 && Math.random() < 0.7) {
+            const target = erosionGrassCandidates[Math.floor(Math.random() * erosionGrassCandidates.length)];
+            mgr.setCellTerrain(target.col, target.row, TerrainType.EMPTY);
+            const c = mgr.getCell(target.col, target.row);
+            if (c) c.height = 0;
+            changes.push({ col: target.col, row: target.row, terrainType: TerrainType.EMPTY, height: 0 });
+        }
+
+        // 检查演化是否已全部完成
         if (this._tickCount >= this._maxTicks) {
             this._isEvolving = false;
         }
