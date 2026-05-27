@@ -119,10 +119,10 @@
             "_value": true
           },
           "audio": {
-            "_value": true
+            "_value": false
           },
           "video": {
-            "_value": true
+            "_value": false
           },
           "webview": {
             "_value": true
@@ -190,11 +190,13 @@
             "_value": false
           }
         },
+        "flags": {
+          "LOAD_SPINE_MANUALLY": false
+        },
         "includeModules": [
           "2d",
           "affine-transform",
           "animation",
-          "audio",
           "base",
           "custom-pipeline",
           "dragon-bones",
@@ -211,14 +213,12 @@
           "tiled-map",
           "tween",
           "ui",
-          "video",
           "webview"
         ],
         "noDeprecatedFeatures": {
           "value": false,
           "version": ""
-        },
-        "flags": {}
+        }
       }
     },
     "globalConfigKey": "defaultConfig"
