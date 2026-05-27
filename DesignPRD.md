@@ -1,111 +1,275 @@
-这是一个面向手机平台，以点击操作为主的生成放置类的益智解谜小游戏
+# Design PRD — TimeBreathe
 
+> 2D 六边形地图竖版手机游戏 · Cocos Creator 3.x · TypeScript · 放置解谜
 
-# 逻辑流程
-抽取地形块->放置->地形生成->重复抽取放置和生成->回合用完，计算评分
+---
 
+## 1. 游戏概述
 
-## 抽取地形块
-随机器中会随机生成3组地形块，每组3个，玩家可以抽取任意一组地形块
+玩家通过抽取地形块、放置到六边形网格上，观察地形自动演化，在 3 轮内构建最佳地形布局。最终吸引野生动物入住栖息地，获取最高分数。
 
+### 核心循环
 
-## 放置
-玩家将地形块逐一放在置在网格中，点击确认前可以随意更改位置
+```
+生成目标动物 → 抽取地形 → 放置 → 演化（×3 轮）→ 动物入住 → 结算
+```
 
+---
 
-## 地形生成
-点击确认生成，地形会自动根据地形规则计算并一步一步进行演化，直到演化时长结束，演化一步为1 tick，每tick等待500ms
+## 2. 游戏流程详述
 
+### 2.0 阶段枚举
 
-## 计算评分
-根据地形的构成和目标达成情况，计算评分。当前阶段只需要按每个地形块计分，每个地形1分，空地形不算分。
+| 阶段 | 说明 |
+|------|------|
+| INIT | 初始化阶段 |
+| DRAW | 抽取地形块 |
+| PLACE | 玩家放置地形块 |
+| EVOLVE | 地形自动演化 |
+| SETTLE | 动物入住 |
+| SCORE | 结算评分 |
 
+### 2.1 初始化
 
+- 创建 **12 列 × 4 行** 六边形网格，odd-r 偏移坐标系
+- 所有格子初始化为 EMPTY 地形
+- 初始化视觉组件：GridView、HandCardView、DrawPanelView
+- 启动目标动物生成流程
 
-# 主要概念
-- 地形块：包括森林、山地、水源三种
+### 2.2 目标动物生成
 
+- 随机生成 3 种目标动物：**BISON（野牛）**、**OWL（猫头鹰）**、**HIPPO（河马）**
+- 每种动物需求数量 2~4 随机
+- 目标动物逐个显示在屏幕上方（间隔 500ms），带剩余数量标签
+- 显示完毕自动进入抽取阶段
 
-- 草地：在3格范围内有水源的情况下，每演化1 tick会向1格范围内按一定概率生成草地格
+### 2.3 抽取阶段（DRAW）
 
+- 游戏从 GRASS / ROCK / WATER 三种地形中随机生成 **3 组**，每组 **3 块**
+- 每组内地形的每种随机独立
+- 玩家通过 UI Toggle 选择一组，点击"确认"按钮
+- 选中组的地形块成为当前**手牌**，进入放置阶段
+- 手牌在屏幕底部横向排列显示
 
-- 山地：每演化3 tick会向周围1格范围内复制山地格，并让当前山地格高度+1
+### 2.4 放置阶段（PLACE）
 
+- **先选手牌，再点格子**：点击手牌中的地形块选中，再次点击取消选中
+- 选中手牌后点击网格空位 → 地形块放置到该格，手牌移除该卡
+- 若网格已满，自动跳过放置直接进入演化
+- 手牌全部用完或网格已满 → 进入演化阶段
 
-- 水源：每演化1 tick会向1格范围内按50%概率最多生成3个水源格子
+### 2.5 演化阶段（EVOLVE）
 
+- 每轮固定 **6 tick**，每个 tick 间隔 **500ms**
+- 演化基于**快照机制**：tick 开始时固定所有格子的当前状态，根据规则计算变化，防止同 tick 内的连锁反应
 
-- 高度：每个格子都存在高度属性，高度在视觉上用堆叠的格子来呈现，在逻辑上影响水源等格子的判断
+#### 地形演化规则
 
+| 地形 | 演化行为 |
+|------|----------|
+| **ROCK** | 每 3 tick 当前高度 +1，并向邻接的 EMPTY 格子随机扩散 1 格 |
+| **GRASS** | 每 tick 检测 3 步范围内是否有 WATER；有则 90% 概率向邻接 EMPTY 格子扩散 1 格 |
+| **WATER** | 每 tick 50% 概率触发扩散，覆盖最多 3 个邻接 EMPTY 格子 |
+| **EMPTY** | 每 tick 70% 概率侵蚀 1 格邻接的 WATER，70% 概率侵蚀 1 格邻接的 GRASS |
 
-- 网格：每个关卡会随机生成一片空网格区域,放置地形后会替换该网格
+### 2.6 轮次循环
 
+- 游戏共 **3 轮**
+- 每轮流程：抽取 → 放置 → 演化
+- 每轮演化完成后计算**本轮地形分**（每个非空格 = 1 分）累加至总分
+- 3 轮结束后进入动物入住阶段
 
+### 2.7 动物入住阶段（SETTLE）
 
+- 逐一检查每种目标动物，尝试入住符合条件的网格（间隔 500ms）
+- 已满或无法入住的动物类型自动跳过
 
-# 资源
-## 地块
-地块说明：尺寸为65*89的png文件，是由宽度（左右两条边）为65，高度(上下两个尖角)为65的尖顶六边形（等距视角下的六边形，有顶面、侧面）和下方用于体现高度的24高度的两个平行四边形组成
+#### 入住条件
 
+| 动物 | 条件 |
+|------|------|
+| **BISON（野牛）** | 格子为 GRASS，且所有邻格都是 GRASS |
+| **OWL（猫头鹰）** | 格子为 ROCK，且 height > 3 |
+| **HIPPO（河马）** | 格子为 WATER，且所有邻格都是 WATER 或 EMPTY |
 
-草地格：./assets/resources/tiles/tileGrass.png  
-山地格：./assets/resources/tiles/tileRock_full.png
-水源格：./assets/resources/tiles/tileWater.png   
-空网格：./assets/resources/tiles/tileSand_full.png 
+- 每入住一只动物 +5 分
+- 已入住的格子上方显示动物精灵图，剩余数量实时更新
 
+### 2.8 结算
 
-## UI
-当前不设置UI纹理，但需要遵循配色
-UI panel 底色： #6E4529
+- 弹出对话框，显示最终总分
+- 总分公式：`∑(每轮非空格数) + 入住动物数 × 5`
 
+---
 
-深色背景： #462914
-深色背景时使用的边框色： #754F32
+## 3. 架构：三层分离
 
+```
+┌──────────────────────────────────────────────────────────┐
+│  Data Layer（scripts/data/）                             │
+│  HexCellData · TerrainType · AnimalData                  │
+├──────────────────────────────────────────────────────────┤
+│  Logic Layer（scripts/logic/）                           │
+│  HexGridManager · DrawManager · TerrainEvolutionManager  │
+│  GameStateManager · ScoreManager · AnimalSettlementMgr   │
+├──────────────────────────────────────────────────────────┤
+│  View Layer（scripts/views/）                            │
+│  GridView · HexCellView · HandCardView                   │
+│  DrawPanelView · AnimalView · DialogView                 │
+├──────────────────────────────────────────────────────────┤
+│  Controller Layer（scripts/controllers/）                │
+│  GameController — 串联逻辑与视觉，驱动游戏流程           │
+└──────────────────────────────────────────────────────────┘
+```
 
-浅色背景：#E8DFC3
-浅色背景时使用的边框色： #D2C2A1
+### 3.1 数据层
 
+| 文件 | 内容 |
+|------|------|
+| `data/TerrainType.ts` | 地形枚举：EMPTY、GRASS、ROCK、WATER |
+| `data/HexCellData.ts` | 格子数据模型（坐标、地形类型、堆叠高度） |
+| `data/AnimalData.ts` | 动物类型枚举 + 目标动物接口 |
 
+### 3.2 逻辑层
 
-深色字体： #745C43
-浅色字体： #E6DDC3
+所有管理器为**单例**。
 
+| 管理器 | 文件 | 职责 |
+|--------|------|------|
+| GameStateManager | `logic/GameStateManager.ts` | 游戏阶段状态机，变更时触发 state-changed 事件 |
+| HexGridManager | `logic/HexGridManager.ts` | 六边形网格增删查、坐标转换、邻居查询 |
+| DrawManager | `logic/DrawManager.ts` | 生成 3 组随机地形、管理手牌 |
+| TerrainEvolutionManager | `logic/TerrainEvolutionManager.ts` | 地形自动演化规则引擎 |
+| ScoreManager | `logic/ScoreManager.ts` | 总分管理：地形分 + 动物分 |
+| AnimalSettlementManager | `logic/AnimalSettlementManager.ts` | 目标动物生成、栖息地合法性判定 |
 
-深色icon： #AD8159
-浅色icon: #E6DCBE
+### 3.3 视觉层
 
-游戏背景： #AFE8EE
+| 视图 | 文件 | 职责 |
+|------|------|------|
+| GridView | `views/GridView.ts` | 构建网格节点、更新地形显示、格子点击回调、添加动物节点 |
+| HexCellView | `views/HexCellView.ts` | 单个格子的地形贴图、ROCK 堆叠效果、选中高亮 |
+| HandCardView | `views/HandCardView.ts` | 手牌展示、选中/移除 |
+| DrawPanelView | `views/DrawPanelView.ts` | 抽取面板、三组预览、确认交互 |
+| AnimalView | `views/AnimalView.ts` | 动物精灵 + 剩余数量标签 |
+| DialogView | `views/DialogView.ts` | 通用对话框（文本 + 确认/取消按钮） |
 
+### 3.4 控制器
 
+| 文件 | 职责 |
+|------|------|
+| `controllers/GameController.ts` | 完全串联全流程，连接逻辑层与视觉层 |
 
-# v2追加游戏内容
-在游戏最开始，加入一个随机动物机制，在开始建造地形之前，系统会随机生成3种目标动物，玩家需要在构筑时考虑动物的栖息地要求，尽可能的让目标动物都住进地形之中，获得更高的分数。每个地形格子只能住进1个动物
+### 3.5 事件系统
 
-为此，游戏的流程需要增加两个环节，现在的游戏流程变成了
-生成目标动物->抽取地形块->放置->地形生成->重复抽取放置和生成->回合用完 ->动物入住 -> 计算评分
+| 事件 | 触发时机 |
+|------|----------|
+| `state-changed` | 游戏阶段切换 |
+| `draw-phase-start` | 进入抽取阶段 |
+| `draw-confirmed` | 玩家确认抽取 |
+| `grid-cell-tapped` | 玩家点击格子 |
+| `hand-card-selected` | 玩家选中手牌 |
+| `all-placed` | 所有手牌放置完毕 |
+| `evolution-tick` | 每次演化 tick |
+| `evolution-complete` | 演化完成 |
+| `score-updated` | 分数更新 |
+| `animal-generated` | 目标动物生成 |
+| `animal-settled` | 动物入住 |
+| `settlement-complete` | 全部动物入住完成 |
 
-## 目标动物
-在游戏的最开始，间隔500ms依次生成3种目标动物，每种动物2～4只， 作为本局的游戏目标
+---
 
-## 动物入住
-地形生成结束后，进入入住阶段，逐个目标动物计算哪些地形格可以入住，计算完一种动物后间隔500ms计算下一种，直到全部动物入住完毕。 每入住一只动物评分+5
+## 4. 六边形网格系统
 
-追加如下主要的游戏概念
-## 动物
-不同的动物会有不同的栖息地需求
+### 4.1 坐标系
 
-野牛：栖息在草地的中心，当草地格满足周边1格范围内都是草地时，当前草地格子可以入住1只野牛。 
-猫头鹰：栖息在山地上，当山地格高度超过3时，当前山地格可以入住1只猫头鹰
-河马：栖息在水中，当水源格的周边只有水或者为空时，当前水源格可以入住1只河马
+- **odd-r 偏移坐标系**
+- 奇数列（col % 2 === 1）向下偏移半格
+- 12 列 × 4 行
 
-## 栖息地
-每种动物有自己的栖息地偏好，当地形格满足栖息地要求时，动物会入住其中
+### 4.2 邻格计算
 
-## 入住分数
-每入住1只动物，分数+5
+每个格子最多 6 个邻格：
+- 偶数列邻格：左、右、左上、右上、左下、右下
+- 奇数列邻格：左、右、左上、右上、左下、右下（row 偏移方向相反）
 
-## 追加资源
-猫头鹰：./assets/resources/animals/owl.png  
-野牛：./assets/resources/animals/owl.png  
-河马：./assets/resources/animals/hippo.png
+### 4.3 格子属性
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| terrainType | TerrainType | EMPTY / GRASS / ROCK / WATER |
+| height | number | 堆叠高度（仅 ROCK 使用，演化时每 3 tick +1） |
+| gridX / gridY | number | 网格坐标 |
+
+### 4.4 堆叠视觉效果
+
+- ROCK 每层高度在格子上方 22px 处叠加一个岩石贴图
+- 其他地形无堆叠效果
+
+### 4.5 网格排版
+
+- SPACING_X = 32，SPACING_Y = 102
+- CELL_WIDTH = 65，CELL_HEIGHT = 65
+
+---
+
+## 5. 资源与美术
+
+### 5.1 地块贴图
+
+| 地形 | 路径 | 尺寸 |
+|------|------|------|
+| GRASS（草地） | `resources/tiles/tileGrass.png` | 65×89 |
+| ROCK（山地） | `resources/tiles/tileRock_full.png` | 65×89 |
+| WATER（水源） | `resources/tiles/tileWater.png` | 65×89 |
+| EMPTY（空地） | `resources/tiles/tileSand_full.png` | 65×89 |
+
+贴图为尖顶六边形（等距视角），65×89 包含顶面和两侧平行四边形高度区域。
+
+### 5.2 动物贴图
+
+| 动物 | 路径 |
+|------|------|
+| BISON（野牛） | `resources/animals/bison.png` |
+| OWL（猫头鹰） | `resources/animals/owl.png` |
+| HIPPO（河马） | `resources/animals/hippo.png` |
+
+### 5.3 UI 配色
+
+| 用途 | 色值 |
+|------|------|
+| 游戏背景 | #AFE8EE |
+| Panel 底色 | #6E4529 |
+| 深色背景 | #462914，边框 #754F32 |
+| 浅色背景 | #E8DFC3，边框 #D2C2A1 |
+| 深色字体 | #745C43 |
+| 浅色字体 | #E6DDC3 |
+| 深色 Icon | #AD8159 |
+| 浅色 Icon | #E6DCBE |
+
+---
+
+## 6. 计分规则
+
+| 来源 | 分值 |
+|------|------|
+| 每轮非空格子 | 每个 1 分，每轮演化完成后结算 |
+| 入住动物 | 每只 5 分 |
+
+---
+
+## 7. 调试功能
+
+- `constants/DebugConfig.ts` — `DEBUG_LABEL` 开关格子坐标标签显示
+- 演化 tick 输出统计日志：GRASS 总数 / 检测到 WATER 数 / 实际扩散数
+
+---
+
+## 8. 当前版本限制
+
+- 无音频系统
+- 无动画系统（除演化 tick 间隔延时外）
+- 无存储/存档系统
+- 无新关卡设计（固定 12×4 网格 + 3 轮）
+- 抽取面板使用 UI Toggle 组件，非自定义手势交互
+- 放置操作为"先选手牌再点格子"，无拖拽放置
