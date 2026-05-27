@@ -1,9 +1,14 @@
 import { TerrainType } from '../data/TerrainType';
 
+/** 抽取分组数据 */
 export interface DrawGroup {
     tiles: TerrainType[];
 }
 
+/**
+ * 地形块抽取管理器（单例）
+ * 负责生成三组随机地形、管理玩家手牌
+ */
 export class DrawManager {
     private static _instance: DrawManager;
     static get instance(): DrawManager {
@@ -25,9 +30,7 @@ export class DrawManager {
         TerrainType.WATER,
     ];
 
-    /**
-     * Generate 3 groups of 3 terrain tiles each.
-     */
+    /** 生成 3 组随机地形，每组 3 块 */
     generateGroups(): void {
         this._groups = [];
         this._currentHand = [];
@@ -41,25 +44,19 @@ export class DrawManager {
         }
     }
 
-    /**
-     * Select one group by index as the current hand.
-     */
+    /** 选中一组的全部地形块作为当前手牌 */
     selectGroup(index: number): void {
         if (index < 0 || index >= this._groups.length) return;
         this._currentHand = [...this._groups[index].tiles];
     }
 
-    /**
-     * Mark one tile in the hand as placed (remove it).
-     */
+    /** 从手牌中移除已放置的一块 */
     removePlacedTile(handIndex: number): void {
         if (handIndex < 0 || handIndex >= this._currentHand.length) return;
         this._currentHand.splice(handIndex, 1);
     }
 
-    /**
-     * Whether the player still has tiles to place.
-     */
+    /** 手牌是否还有未放置的地形块 */
     hasMoreTiles(): boolean {
         return this._currentHand.length > 0;
     }

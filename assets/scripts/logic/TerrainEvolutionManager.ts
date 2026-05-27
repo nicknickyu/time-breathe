@@ -1,6 +1,7 @@
 import { HexGridManager } from './HexGridManager';
 import { TerrainType } from '../data/TerrainType';
 
+/** 一次演化 tick 中单个格子的变化数据 */
 export interface TickChange {
     col: number;
     row: number;
@@ -8,6 +9,10 @@ export interface TickChange {
     height: number;
 }
 
+/**
+ * 地形演化管理器（单例）
+ * 控制 ROCK / GRASS / WATER 三种地形的自动演化规则
+ */
 export class TerrainEvolutionManager {
     private static _instance: TerrainEvolutionManager;
     static get instance(): TerrainEvolutionManager {
@@ -25,23 +30,25 @@ export class TerrainEvolutionManager {
     get tickCount(): number { return this._tickCount; }
     get maxTicks(): number { return this._maxTicks; }
 
+    /** 开始演化，持续 maxTicks 次 tick */
     startEvolution(maxTicks: number): void {
         this._tickCount = 0;
         this._maxTicks = maxTicks;
         this._isEvolving = true;
     }
 
+    /** 停止演化并重置计数 */
     stopEvolution(): void {
         this._isEvolving = false;
         this._tickCount = 0;
     }
 
     /**
-     * Execute one evolution tick.
-     * - ROCK: every 3 ticks, height+1 and copy to adjacent empty
-     * - GRASS: each tick, if water within 3 tiles, probability to spread to adjacent empty
-     * - WATER: each tick, 50% chance to spread to adjacent empty (max 3)
-     * Returns all cell changes in this tick.
+     * 执行一次演化 tick:
+     * - ROCK: 每 3 tick 高度 +1 并向邻接空地扩散
+     * - GRASS: 若 3 格内有 WATER 则概率向邻接空地扩散
+     * - WATER: 50% 概率向邻接空地扩散（最多 3 格）
+     * 返回本 tick 所有格子的变化
      */
     tick(): TickChange[] {
         if (!this._isEvolving) return [];
@@ -204,7 +211,7 @@ export class TerrainEvolutionManager {
     }
 
     /**
-     * BFS check if any WATER cell exists within `range` steps from (col, row).
+     * BFS 检查 (col, row) 的 range 步数内是否存在 WATER 格子
      */
     private _hasWaterWithinRange(col: number, row: number, range: number): boolean {
         const mgr = HexGridManager.instance;

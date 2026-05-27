@@ -1,3 +1,4 @@
+/** 游戏事件常量定义 */
 export class GameEvents {
 
     // 游戏状态变化

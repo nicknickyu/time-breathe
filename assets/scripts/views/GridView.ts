@@ -4,6 +4,10 @@ import { HexGridManager } from '../logic/HexGridManager';
 import { HexCellView } from './HexCellView';
 const { ccclass, property } = _decorator;
 
+/**
+ * 网格视图
+ * 负责创建和更新六边形地形网格的视觉表现
+ */
 @ccclass('GridView')
 export class GridView extends Component {
     @property(Prefab)
@@ -14,22 +18,19 @@ export class GridView extends Component {
     private _cellBaseY: Map<string, number> = new Map();
     private _onCellTapCb: ((col: number, row: number) => void) | null = null;
 
-    /**
-     * Initialize with prefab and preloaded sprite frames, then build the grid.
-     */
     init(prefab: Prefab | null, spriteFrames: Map<TerrainType, SpriteFrame>): void {
         this.hexCellPrefab = prefab;
         this._spriteFrames = spriteFrames;
     }
 
+    /** 根据 HexGridManager 数据构建网格节点 */
     buildGrid(): void {
         const mgr = HexGridManager.instance;
         if (!this.hexCellPrefab) return;
 
         const gridCenterY = 250;
 
-        // Odd-r offset: odd cols are shifted down, so within each row
-        // even cols (higher y) are behind, odd cols (shifted lower) on top
+        // Odd-r offset: even cols (higher y) behind, odd cols (shifted lower) on top
         for (let r = 0; r < mgr.rows; r++) {
             for (let ce = 0; ce < mgr.cols; ce += 2) {
                 this._createCellNode(ce, r, gridCenterY);
@@ -40,10 +41,12 @@ export class GridView extends Component {
         }
     }
 
+    /** 注册格子点击回调 */
     onCellTap(cb: (col: number, row: number) => void): void {
         this._onCellTapCb = cb;
     }
 
+    /** 更新单个格子的地形显示 */
     updateCellVisual(col: number, row: number, type: TerrainType): void {
         const node = this._cellNodes.get(`${col},${row}`);
         if (!node) return;
@@ -54,6 +57,7 @@ export class GridView extends Component {
         }
     }
 
+    /** 切换格子高亮状态 */
     highlightCell(col: number, row: number, active: boolean): void {
         const node = this._cellNodes.get(`${col},${row}`);
         if (!node) return;
@@ -61,13 +65,14 @@ export class GridView extends Component {
         if (view) view.setHighlight(active);
     }
 
+    /** 获取所有格子节点的映射 */
     getAllCellNodes(): Map<string, Node> {
         return this._cellNodes;
     }
 
     /**
-     * Update cell's height stacking (delegates to HexCellView).
-     * Each height level adds a stacked rock tile 32px above.
+     * 更新格子堆叠高度（仅 ROCK 地形生效）
+     * 每层高度增加一个岩石贴图，偏移 22px
      */
     setCellHeight(col: number, row: number, height: number): void {
         const key = `${col},${row}`;
@@ -77,6 +82,7 @@ export class GridView extends Component {
         if (view) view.setHeight(height);
     }
 
+    /** 在指定格子上添加动物节点 */
     addAnimalToCell(col: number, row: number, animalNode: Node, offsetY: number = 40): void {
         const cellNode = this._cellNodes.get(`${col},${row}`);
         if (!cellNode) return;
@@ -84,6 +90,7 @@ export class GridView extends Component {
         cellNode.addChild(animalNode);
     }
 
+    /** 创建单个格子节点并设置位置、交互 */
     private _createCellNode(c: number, r: number, gridCenterY: number): void {
         const mgr = HexGridManager.instance;
         const node = instantiate(this.hexCellPrefab);
@@ -97,7 +104,6 @@ export class GridView extends Component {
         const y = -(r * mgr.SPACING_Y + (c % 2) * mgr.SPACING_Y / 2) + gridCenterY;
         node.setPosition(new Vec3(x, y, 0));
 
-        // Store base Y for height adjustment
         this._cellBaseY.set(`${c},${r}`, y);
 
         this.node.addChild(node);

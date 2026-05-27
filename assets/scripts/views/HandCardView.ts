@@ -3,6 +3,10 @@ import { TerrainType } from '../data/TerrainType';
 import { HexCellView } from './HexCellView';
 const { ccclass, property } = _decorator;
 
+/**
+ * 手牌视图
+ * 在屏幕下方显示玩家当前手牌（地形块），处理选中和移除
+ */
 @ccclass('HandCardView')
 export class HandCardView extends Component {
     @property(Prefab)
@@ -22,6 +26,7 @@ export class HandCardView extends Component {
         this._spriteFrames = spriteFrames;
     }
 
+    /** 展示手牌（水平排列在容器中） */
     showHand(tiles: TerrainType[]): void {
         this.clear();
         this._currentTiles = [...tiles];
@@ -47,7 +52,6 @@ export class HandCardView extends Component {
                 uiTransform.height = 89;
             }
 
-            // Position centered within the container
             const container = this.handCardsContainer;
             const localX = (i - (tiles.length - 1) / 2) * spacingX;
             node.setPosition(new Vec3(localX, 0, 0));
@@ -69,10 +73,12 @@ export class HandCardView extends Component {
         }
     }
 
+    /** 注册手牌选中回调 */
     onCardSelected(cb: (index: number) => void): void {
         this._onCardSelectedCb = cb;
     }
 
+    /** 设置选中高亮 */
     setSelected(index: number): void {
         this._selectedIndex = index;
         for (let i = 0; i < this._cardNodes.length; i++) {
@@ -83,6 +89,7 @@ export class HandCardView extends Component {
         }
     }
 
+    /** 移除已放置的手牌 */
     removeCard(handIndex: number): void {
         if (handIndex < 0 || handIndex >= this._cardNodes.length) return;
 
@@ -91,6 +98,7 @@ export class HandCardView extends Component {
         this._selectedIndex = -1;
     }
 
+    /** 清空所有手牌 */
     clear(): void {
         for (const node of this._cardNodes) {
             node.destroy();

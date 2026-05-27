@@ -2,8 +2,13 @@ import { _decorator, Component, Sprite, SpriteFrame, UITransform, Color, Node, V
 import { TerrainType } from '../data/TerrainType';
 const { ccclass, property } = _decorator;
 
+/** 每个岩石堆叠层的高度偏移像素 */
 const STACK_OFFSET = 22;
 
+/**
+ * 六边形格子视图
+ * 管理单个格子的地形显示、堆叠效果和高亮
+ */
 @ccclass('HexCellView')
 export class HexCellView extends Component {
     @property(Sprite)
@@ -26,6 +31,7 @@ export class HexCellView extends Component {
         this._applyVisual();
     }
 
+    /** 设置地形类型并更新显示 */
     setTerrain(type: TerrainType): void {
         this._currentType = type;
         this._applyVisual();
@@ -34,6 +40,7 @@ export class HexCellView extends Component {
         }
     }
 
+    /** 切换高亮颜色（选中或放置预览） */
     setHighlight(active: boolean): void {
         if (this.topSprite) {
             this.topSprite.color = active
@@ -43,11 +50,10 @@ export class HexCellView extends Component {
     }
 
     /**
-     * Add/remove stacked rock tiles above this cell to match height.
-     * Each level = one extra rock sprite at STACK_OFFSET × level.
+     * 更新格子堆叠高度（仅 ROCK 地形）
+     * 每层在格子上方 STACK_OFFSET × level 处添加一个岩石贴图
      */
     setHeight(height: number): void {
-        // Only ROCK cells display stacks
         if (this._currentType !== TerrainType.ROCK) {
             this._clearStacks();
             return;
@@ -56,13 +62,13 @@ export class HexCellView extends Component {
         const rockSf = this._spriteFrames.get(TerrainType.ROCK);
         if (!rockSf) return;
 
-        // Remove excess stacks
+        // 移除多余的堆叠层
         while (this._stackNodes.length > height) {
             const node = this._stackNodes.pop()!;
             node.destroy();
         }
 
-        // Add new stacks
+        // 新增堆叠层
         while (this._stackNodes.length < height) {
             const level = this._stackNodes.length + 1;
             const stackNode = new Node('RockStack');
@@ -80,6 +86,7 @@ export class HexCellView extends Component {
         }
     }
 
+    /** 清除所有堆叠子节点 */
     private _clearStacks(): void {
         for (const node of this._stackNodes) {
             node.destroy();
@@ -87,6 +94,7 @@ export class HexCellView extends Component {
         this._stackNodes = [];
     }
 
+    /** 应用当前地形的贴图到 Sprite */
     private _applyVisual(): void {
         const sf = this._spriteFrames.get(this._currentType);
         if (sf && this.topSprite) {

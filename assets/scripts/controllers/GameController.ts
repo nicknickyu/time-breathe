@@ -13,6 +13,11 @@ import { AnimalSettlementManager } from '../logic/AnimalSettlementManager';
 import { AnimalView } from '../views/AnimalView';
 const { ccclass, property } = _decorator;
 
+/**
+ * 游戏主控制器
+ * 连接逻辑层与视觉层，驱动游戏流程：
+ * 生成目标动物 → 抽取地形 → 放置 → 演化（3 轮）→ 动物入住 → 结算
+ */
 @ccclass('GameController')
 export class GameController extends Component {
     @property(Prefab)
@@ -131,11 +136,13 @@ export class GameController extends Component {
 
     // ── Target animal generation phase ──
 
+    /** 进入目标动物展示阶段 */
     private _startTargetAnimalPhase(): void {
         AnimalSettlementManager.instance.generateTargetAnimals();
         this._showTargetAnimal(0);
     }
 
+    /** 逐个显示目标动物（每 500ms 一个），显示完后进入抽取阶段 */
     private _showTargetAnimal(index: number): void {
         const animals = AnimalSettlementManager.instance.targetAnimals;
         if (index >= animals.length) {
@@ -163,8 +170,9 @@ export class GameController extends Component {
         this.scheduleOnce(() => this._showTargetAnimal(index + 1), 0.5);
     }
 
-    // ── Game phase flow ──
+    // ── Draw phase ──
 
+    /** 进入抽取阶段：生成随机分组并显示抽取面板 */
     private _startDrawPhase(): void {
         this._clearTickLabel();
         DrawManager.instance.generateGroups();
@@ -179,6 +187,7 @@ export class GameController extends Component {
         }
     }
 
+    /** 玩家确认抽取后进入放置阶段 */
     private _onDrawConfirmed(): void {
         if (!this._drawPanelView) return;
 
@@ -189,6 +198,7 @@ export class GameController extends Component {
         this._startPlacePhase();
     }
 
+    /** 进入放置阶段：展示手牌等待玩家放置 */
     private _startPlacePhase(): void {
         GameStateManager.instance.setState(GamePhase.PLACE);
         this._selectedHandIndex = -1;
@@ -201,6 +211,7 @@ export class GameController extends Component {
 
     // ── Interaction handlers ──
 
+    /** 切换手牌选中状态（再次点击取消选中） */
     private _onHandCardSelected(index: number): void {
         if (this._selectedHandIndex === index) {
             this._selectedHandIndex = -1;
@@ -211,6 +222,7 @@ export class GameController extends Component {
         }
     }
 
+    /** 点击格子：放置选中手牌（仅在 PLACE 阶段生效） */
     private _onGridCellTapped(col: number, row: number): void {
         // Only allow placement during PLACE phase (not during evolution)
         if (GameStateManager.instance.phase !== GamePhase.PLACE) return;
@@ -239,6 +251,7 @@ export class GameController extends Component {
 
     // ── Evolution phase ──
 
+    /** 进入演化阶段：隐藏手牌，开始地形自动演化 */
     private _startEvolutionPhase(): void {
         GameStateManager.instance.setState(GamePhase.EVOLVE);
 
@@ -251,6 +264,7 @@ export class GameController extends Component {
         this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
     }
 
+    /** 执行一次演化 tick 并更新视觉，完成后进入下一轮或结算 */
     private _doEvolutionTick(): void {
         this._tickCount++;
         const changes = TerrainEvolutionManager.instance.tick();
@@ -273,6 +287,7 @@ export class GameController extends Component {
         }
     }
 
+    /** 演化完成：计算本轮分数，进入下一轮或入住阶段 */
     private _onEvolutionComplete(): void {
         this._clearTickLabel();
         const roundScore = ScoreManager.instance.calculateRoundScore();
@@ -290,6 +305,7 @@ export class GameController extends Component {
 
     // ── Settlement phase ──
 
+    /** 进入动物入住阶段 */
     private _startSettlementPhase(): void {
         GameStateManager.instance.setState(GamePhase.SETTLE);
         if (this._handCardView) this._handCardView.clear();
@@ -298,6 +314,7 @@ export class GameController extends Component {
         this._settleNextAnimal();
     }
 
+    /** 逐只入住动物（每 500ms 一只），已满或无法入住的类型自动跳过 */
     private _settleNextAnimal(): void {
         const animals = AnimalSettlementManager.instance.targetAnimals;
 
@@ -349,6 +366,7 @@ export class GameController extends Component {
         this.scheduleOnce(() => this._settleNextAnimal(), 0.5);
     }
 
+    /** 全部动物入住完成：显示 Game Over 和最终总分 */
     private _onAllAnimalsSettled(): void {
         const roundLabel = this._findDescendant('RoundLabel');
         if (roundLabel) {
@@ -362,6 +380,7 @@ export class GameController extends Component {
         }
     }
 
+    /** 更新某个目标动物的剩余数量显示 */
     private _updateTargetAnimalCount(index: number): void {
         const animal = AnimalSettlementManager.instance.targetAnimals[index];
         const remaining = animal.totalCount - animal.settledCount;

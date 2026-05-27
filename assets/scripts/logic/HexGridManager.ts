@@ -1,6 +1,10 @@
 import { HexCellData } from '../data/HexCellData';
 import { TerrainType } from '../data/TerrainType';
 
+/**
+ * 六边形网格数据管理器（单例）
+ * 维护网格数据、提供坐标转换和邻居查询
+ */
 export class HexGridManager {
     private static _instance: HexGridManager;
     static get instance(): HexGridManager {
@@ -22,6 +26,7 @@ export class HexGridManager {
     get cols(): number { return this._cols; }
     get rows(): number { return this._rows; }
 
+    /** 生成 cols × rows 的空网格 */
     generateGrid(cols: number, rows: number): void {
         this._cols = cols;
         this._rows = rows;
@@ -35,11 +40,13 @@ export class HexGridManager {
         }
     }
 
+    /** 获取指定格子的数据 */
     getCell(col: number, row: number): HexCellData | null {
         if (!this.isInBounds(col, row)) return null;
         return this._grid[col][row];
     }
 
+    /** 设置指定格子的地形类型 */
     setCellTerrain(col: number, row: number, type: TerrainType): void {
         const cell = this.getCell(col, row);
         if (cell) {
@@ -47,6 +54,7 @@ export class HexGridManager {
         }
     }
 
+    /** 获取所有格子数据的扁平数组 */
     getAllCells(): HexCellData[] {
         const result: HexCellData[] = [];
         for (let c = 0; c < this._cols; c++) {
@@ -57,43 +65,42 @@ export class HexGridManager {
         return result;
     }
 
+    /** 检查坐标是否在网格范围内 */
     isInBounds(col: number, row: number): boolean {
         return col >= 0 && col < this._cols && row >= 0 && row < this._rows;
     }
 
     /**
-     * Get 6 neighbors in odd-r offset coordinate system.
-     * Odd columns are shifted down by half a cell height.
+     * 获取 (col, row) 的六个邻格（odd-r 偏移坐标系）
+     * 奇数列的格子向下偏移半格，邻格也相应偏移
      */
     getNeighbors(col: number, row: number): { col: number; row: number }[] {
         let candidates: { col: number; row: number }[];
         if (col % 2 === 1) {
-            // odd column — neighbors below are offset
+            // 奇数列 — 下方邻格偏移
             candidates = [
-                { col: col - 1, row },           // left
-                { col: col + 1, row },           // right
-                { col, row: row - 1 },            // top
-                { col, row: row + 1 },            // bottom
-                { col: col - 1, row: row + 1 },   // lower-left
-                { col: col + 1, row: row + 1 },   // lower-right
+                { col: col - 1, row },
+                { col: col + 1, row },
+                { col, row: row - 1 },
+                { col, row: row + 1 },
+                { col: col - 1, row: row + 1 },
+                { col: col + 1, row: row + 1 },
             ];
         } else {
-            // even column — neighbors above are offset
+            // 偶数列 — 上方邻格偏移
             candidates = [
-                { col: col - 1, row },           // left
-                { col: col + 1, row },           // right
-                { col, row: row - 1 },            // top
-                { col, row: row + 1 },            // bottom
-                { col: col - 1, row: row - 1 },   // upper-left
-                { col: col + 1, row: row - 1 },   // upper-right
+                { col: col - 1, row },
+                { col: col + 1, row },
+                { col, row: row - 1 },
+                { col, row: row + 1 },
+                { col: col - 1, row: row - 1 },
+                { col: col + 1, row: row - 1 },
             ];
         }
         return candidates.filter(n => this.isInBounds(n.col, n.row));
     }
 
-    /**
-     * Calculate world position for a grid cell (centered on the grid).
-     */
+    /** 计算网格整体的原点坐标（左上角） */
     getGridOrigin(): { x: number; y: number } {
         const totalW = (this._cols - 1) * this.SPACING_X + this.CELL_WIDTH;
         const totalH = (this._rows - 1) * this.SPACING_Y
@@ -102,6 +109,7 @@ export class HexGridManager {
         return { x: -totalW / 2, y: totalH / 2 };
     }
 
+    /** 计算格子 (col, row) 的世界坐标 */
     getCellPosition(col: number, row: number): { x: number; y: number } {
         const origin = this.getGridOrigin();
         const x = col * this.SPACING_X + origin.x + this.CELL_WIDTH / 2;

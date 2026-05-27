@@ -2,6 +2,10 @@ import { HexGridManager } from './HexGridManager';
 import { TerrainType } from '../data/TerrainType';
 import { AnimalType, TargetAnimal } from '../data/AnimalData';
 
+/**
+ * 动物入住管理器（单例）
+ * 负责生成目标动物、检查动物栖息地合法性
+ */
 export class AnimalSettlementManager {
     private static _instance: AnimalSettlementManager;
     static get instance(): AnimalSettlementManager {
@@ -17,6 +21,7 @@ export class AnimalSettlementManager {
         return this._targetAnimals;
     }
 
+    /** 生成 3 种目标动物，每种数量 2~4 随机 */
     generateTargetAnimals(): void {
         this._targetAnimals = [];
 
@@ -31,6 +36,12 @@ export class AnimalSettlementManager {
         }
     }
 
+    /**
+     * 获取某种动物的合法入住格子
+     * BISON: GRASS 且所有邻格都是 GRASS
+     * OWL: ROCK 且 height > 3
+     * HIPPO: WATER 且所有邻格都是 WATER 或 EMPTY
+     */
     getValidCells(type: AnimalType): { col: number; row: number }[] {
         const mgr = HexGridManager.instance;
         const cells = mgr.getAllCells();
@@ -61,6 +72,7 @@ export class AnimalSettlementManager {
         return result;
     }
 
+    /** 检查 (col,row) 的所有邻格是否都是指定地形 */
     private _allNeighborsAre(col: number, row: number, type: TerrainType): boolean {
         const neighbors = HexGridManager.instance.getNeighbors(col, row);
         if (neighbors.length === 0) return false;
@@ -70,6 +82,7 @@ export class AnimalSettlementManager {
         });
     }
 
+    /** 检查 (col,row) 的所有邻格是否都是 WATER 或 EMPTY */
     private _allNeighborsWaterOrEmpty(col: number, row: number): boolean {
         const neighbors = HexGridManager.instance.getNeighbors(col, row);
         if (neighbors.length === 0) return false;

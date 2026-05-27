@@ -1,6 +1,10 @@
 import { _decorator, Component, Node, Sprite, SpriteFrame, Label, UITransform, Vec3, Color } from 'cc';
 const { ccclass } = _decorator;
 
+/**
+ * 动物视图
+ * 管理动物预制体的显示：Top 精灵图 + Cnt 剩余数量标签
+ */
 @ccclass('AnimalView')
 export class AnimalView extends Component {
     private _topSprite: Sprite | null = null;

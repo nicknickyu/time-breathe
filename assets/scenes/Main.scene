@@ -1650,7 +1650,7 @@
       "__expectedType__": "cc.Prefab"
     },
     "sandSprite": {
-      "__uuid__": "e6b62830-6986-4457-a856-45ef288a79e8@f9941",
+      "__uuid__": "d7ce7c41-2e03-4a91-8aae-1274b1203f9e@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "grassSprite": {

@@ -3,6 +3,10 @@ import { TerrainType } from '../data/TerrainType';
 import { DrawGroup } from '../logic/DrawManager';
 const { ccclass, property } = _decorator;
 
+/**
+ * 抽取面板视图
+ * 显示三组地形块供玩家选择，处理确认交互
+ */
 @ccclass('DrawPanelView')
 export class DrawPanelView extends Component {
     private _groups: DrawGroup[] = [];
@@ -15,6 +19,7 @@ export class DrawPanelView extends Component {
         this.node.active = false;
     }
 
+    /** 显示抽取面板，填充地形预览并绑定确认按钮 */
     show(
         groups: DrawGroup[],
         spriteFrames: Map<TerrainType, SpriteFrame>,
@@ -29,8 +34,8 @@ export class DrawPanelView extends Component {
         this._wireConfirmButton();
     }
 
+    /** 隐藏面板并清理确认按钮监听 */
     hide(): void {
-        // Clean up confirm handler
         if (this._confirmNode && this._confirmHandler) {
             this._confirmNode.off(Node.EventType.TOUCH_END, this._confirmHandler, this);
         }
@@ -39,6 +44,7 @@ export class DrawPanelView extends Component {
         this.node.active = false;
     }
 
+    /** 获取当前选中的分组索引 */
     getSelectedIndex(): number {
         const container = this._findDescendant(this.node, 'DrawContainer');
         if (!container) return 0;
@@ -50,6 +56,7 @@ export class DrawPanelView extends Component {
         return 0;
     }
 
+    /** 在三组槽位中填充地形图标 */
     private _populateSlots(): void {
         const container = this._findDescendant(this.node, 'DrawContainer');
         if (!container) return;
@@ -60,14 +67,14 @@ export class DrawPanelView extends Component {
             const slot = this._findDescendant(container, slotNames[g]);
             if (!slot) continue;
 
-            // Remove old icon children except Checkmark
+            // 清除旧图标（保留 Toggle 自带的 Checkmark）
             const toRemove: Node[] = [];
             for (const child of slot.children) {
                 if (child.name !== 'Checkmark') toRemove.push(child);
             }
             toRemove.forEach(n => n.destroy());
 
-            // Add 3 terrain icons stacked vertically
+            // 竖向排列 3 个地形图标
             const group = this._groups[g];
             const startY = 35;
             const spacing = 55;
@@ -88,6 +95,7 @@ export class DrawPanelView extends Component {
         }
     }
 
+    /** 为确认按钮绑定点击事件 */
     private _wireConfirmButton(): void {
         const panel = this._findDescendant(this.node, 'Panel');
         if (!panel) return;
@@ -101,6 +109,7 @@ export class DrawPanelView extends Component {
         confirmNode.on(Node.EventType.TOUCH_END, this._confirmHandler, this);
     }
 
+    /** DFS 查找指定名称的后代节点 */
     private _findDescendant(parent: Node, name: string): Node | null {
         for (const child of parent.children) {
             if (child.name === name) return child;
