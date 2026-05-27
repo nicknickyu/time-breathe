@@ -203,6 +203,12 @@ export class GameController extends Component {
         GameStateManager.instance.setState(GamePhase.PLACE);
         this._selectedHandIndex = -1;
 
+        // 如果 grid 已经没有空格，直接进入演化阶段
+        if (this._isGridFull()) {
+            this._startEvolutionPhase();
+            return;
+        }
+
         const hand = DrawManager.instance.currentHand;
         if (this._handCardView) {
             this._handCardView.showHand(hand);
@@ -244,9 +250,15 @@ export class GameController extends Component {
         }
         this._selectedHandIndex = -1;
 
-        if (!DrawManager.instance.hasMoreTiles()) {
+        // 手牌用完或 grid 已满 → 进入演化阶段
+        if (!DrawManager.instance.hasMoreTiles() || this._isGridFull()) {
             this.scheduleOnce(() => this._startEvolutionPhase(), 0.4);
         }
+    }
+
+    /** 检测 grid 是否已经没有可放置的空格 */
+    private _isGridFull(): boolean {
+        return HexGridManager.instance.getAllCells().every(cell => !cell.isEmpty());
     }
 
     // ── Evolution phase ──
