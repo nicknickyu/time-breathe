@@ -284,10 +284,10 @@
     "__prefab": {
       "__id__": 9
     },
-    "_alignFlags": 2,
+    "_alignFlags": 18,
     "_target": null,
-    "_left": 0,
-    "_right": 0,
+    "_left": 160.5492605117553,
+    "_right": 328.74372390502276,
     "_top": 0,
     "_bottom": 0,
     "_horizontalCenter": 0,
@@ -298,7 +298,7 @@
     "_isAbsBottom": true,
     "_isAbsHorizontalCenter": true,
     "_isAbsVerticalCenter": true,
-    "_originalWidth": 0,
+    "_originalWidth": 50.707015583221924,
     "_originalHeight": 0,
     "_alignMode": 2,
     "_lockFlags": 0,
@@ -1367,6 +1367,18 @@
     "_enabled": true,
     "__prefab": {
       "__id__": 57
+    },
+    "titleLabel": {
+      "__id__": 39
+    },
+    "contentLabel": {
+      "__id__": 6
+    },
+    "confirmButton": {
+      "__id__": 12
+    },
+    "panelNode": {
+      "__id__": 2
     },
     "_id": ""
   },

@@ -177,6 +177,7 @@ export class GameController extends Component {
 
         const dialogView = dialogNode.getComponent(ConfirmDialogView);
         if (dialogView) {
+            dialogView.setPanelHeight(640);
             dialogView.setTitle('游戏说明');
             dialogView.setButtonText('开始吧');
             dialogView.show(
