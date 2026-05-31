@@ -18,10 +18,10 @@ export class ScoreManager {
 
     get totalScore(): number { return this._totalScore; }
 
-    /** 计算本轮分数：每个非空地格 = 1 分 */
+    /** 计算本轮分数：每个非侵蚀地格 = 1 分 */
     calculateRoundScore(): number {
         const cells = HexGridManager.instance.getAllCells();
-        return cells.filter(c => c.terrainType !== TerrainType.EMPTY).length;
+        return cells.filter(c => c.terrainType !== TerrainType.ERODED).length;
     }
 
     /** 累加本轮地形分 */

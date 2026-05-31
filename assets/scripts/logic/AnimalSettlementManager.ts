@@ -62,7 +62,7 @@ export class AnimalSettlementManager {
                     }
                     break;
                 case AnimalType.HIPPO:
-                    if (cell.terrainType === TerrainType.WATER && this._allNeighborsWaterOrEmpty(cell.gridX, cell.gridY)) {
+                    if (cell.terrainType === TerrainType.WATER && this._allNeighborsWaterOrEroded(cell.gridX, cell.gridY)) {
                         result.push({ col: cell.gridX, row: cell.gridY });
                     }
                     break;
@@ -82,14 +82,14 @@ export class AnimalSettlementManager {
         });
     }
 
-    /** 检查 (col,row) 的所有邻格是否都是 WATER 或 EMPTY */
-    private _allNeighborsWaterOrEmpty(col: number, row: number): boolean {
+    /** 检查 (col,row) 的所有邻格是否都是 WATER 或 ERODED */
+    private _allNeighborsWaterOrEroded(col: number, row: number): boolean {
         const neighbors = HexGridManager.instance.getNeighbors(col, row);
         if (neighbors.length === 0) return false;
         return neighbors.every(n => {
             const cell = HexGridManager.instance.getCell(n.col, n.row);
             if (!cell) return false;
-            return cell.terrainType === TerrainType.WATER || cell.terrainType === TerrainType.EMPTY;
+            return cell.terrainType === TerrainType.WATER || cell.terrainType === TerrainType.ERODED;
         });
     }
 }

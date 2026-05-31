@@ -1,5 +1,6 @@
-import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label, Vec3 } from 'cc';
+import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label, Vec3, director } from 'cc';
 import { DialogView } from '../views/DialogView';
+import { ConfirmDialogView } from '../views/ConfirmDialogView';
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
@@ -12,6 +13,7 @@ import { HandCardView } from '../views/HandCardView';
 import { AnimalType } from '../data/AnimalData';
 import { AnimalSettlementManager } from '../logic/AnimalSettlementManager';
 import { AnimalView } from '../views/AnimalView';
+import { GAME_INTRO_TEXT } from '../constants/GameTextConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -27,7 +29,7 @@ export class GameController extends Component {
     @property(Prefab)
     drawPanelPrefab: Prefab | null = null;
 
-    // ── Terrain textures (drag from Assets panel) ──
+    // ── Terrain textures for hand cards / draw panel (drag from Assets panel) ──
 
     @property(SpriteFrame)
     sandSprite: SpriteFrame | null = null;
@@ -54,6 +56,12 @@ export class GameController extends Component {
 
     @property(Prefab)
     dialogPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    confirmDialogPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    infoCardPrefab: Prefab | null = null;
 
     @property(Node)
     targetAnimalsContainer: Node | null = null;
@@ -82,12 +90,13 @@ export class GameController extends Component {
     start(): void {
         // Build sprite frame map from editor-assigned references
         this._initSpriteFrames();
-        this._initGame();
+        this._initGameSetup();
+        this._showStartDialog();
     }
 
     private _initSpriteFrames(): void {
         const map = new Map<TerrainType, SpriteFrame>();
-        map.set(TerrainType.EMPTY, this.sandSprite!);
+        map.set(TerrainType.ERODED, this.sandSprite!);
         map.set(TerrainType.GRASS, this.grassSprite!);
         map.set(TerrainType.ROCK, this.rockSprite!);
         map.set(TerrainType.WATER, this.waterSprite!);
@@ -102,7 +111,8 @@ export class GameController extends Component {
 
     // ── Initialization ──
 
-    private _initGame(): void {
+    /** 初始化游戏场景（网格、手牌、抽取面板等），但不启动游戏流程 */
+    private _initGameSetup(): void {
         // 1) Grid data
         HexGridManager.instance.generateGrid(12, 4);
 
@@ -133,24 +143,68 @@ export class GameController extends Component {
         this._updateRoundLabel();
         this._updateScoreLabel();
 
-        // 6) Init animal sprites and start target animal phase
         this._initAnimalSprites();
+    }
+
+    /** 玩家确认后启动游戏流程 */
+    private _startGameFlow(): void {
         this._startTargetAnimalPhase();
+    }
+
+    /** 显示阶段提示卡片，500ms 后自动隐藏并触发回调 */
+    private _showInfoCard(text: string, callback?: () => void): void {
+        if (!this.infoCardPrefab) {
+            if (callback) callback();
+            return;
+        }
+        const node = instantiate(this.infoCardPrefab);
+        this.node.addChild(node);
+
+        const label = node.getChildByName('CardFrame')?.getChildByName('Label')?.getComponent(Label);
+        if (label) label.string = text;
+
+        this.scheduleOnce(() => {
+            node.destroy();
+            if (callback) callback();
+        }, 1);
+    }
+
+    /** 显示开始确认对话框（游戏说明） */
+    private _showStartDialog(): void {
+        if (!this.confirmDialogPrefab) return;
+        const dialogNode = instantiate(this.confirmDialogPrefab);
+        this.node.addChild(dialogNode);
+
+        const dialogView = dialogNode.getComponent(ConfirmDialogView);
+        if (dialogView) {
+            dialogView.setTitle('游戏说明');
+            dialogView.setButtonText('开始吧');
+            dialogView.show(
+                GAME_INTRO_TEXT,
+                () => {
+                    this._startGameFlow();
+                },
+            );
+        }
     }
 
     // ── Target animal generation phase ──
 
     /** 进入目标动物展示阶段 */
     private _startTargetAnimalPhase(): void {
-        AnimalSettlementManager.instance.generateTargetAnimals();
-        this._showTargetAnimal(0);
+        this._showInfoCard('目标动物阶段', () => {
+            AnimalSettlementManager.instance.generateTargetAnimals();
+            this._showTargetAnimal(0);
+        });
     }
 
     /** 逐个显示目标动物（每 500ms 一个），显示完后进入抽取阶段 */
     private _showTargetAnimal(index: number): void {
         const animals = AnimalSettlementManager.instance.targetAnimals;
         if (index >= animals.length) {
-            this._startDrawPhase();
+            this._showInfoCard('抽取地形阶段', () => {
+                this._startDrawPhase();
+            });
             return;
         }
 
@@ -269,15 +323,17 @@ export class GameController extends Component {
 
     /** 进入演化阶段：隐藏手牌，开始地形自动演化 */
     private _startEvolutionPhase(): void {
-        GameStateManager.instance.setState(GamePhase.EVOLVE);
+        this._showInfoCard('演化阶段', () => {
+            GameStateManager.instance.setState(GamePhase.EVOLVE);
 
-        // Hide hand cards
-        if (this._handCardView) this._handCardView.clear();
-        this._selectedHandIndex = -1;
+            // Hide hand cards
+            if (this._handCardView) this._handCardView.clear();
+            this._selectedHandIndex = -1;
 
-        this._tickCount = 0;
-        TerrainEvolutionManager.instance.startEvolution(6);
-        this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+            this._tickCount = 0;
+            TerrainEvolutionManager.instance.startEvolution(6);
+            this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+        });
     }
 
     /** 执行一次演化 tick 并更新视觉，完成后进入下一轮或结算 */
@@ -323,11 +379,13 @@ export class GameController extends Component {
 
     /** 进入动物入住阶段 */
     private _startSettlementPhase(): void {
-        GameStateManager.instance.setState(GamePhase.SETTLE);
-        if (this._handCardView) this._handCardView.clear();
-        this._selectedHandIndex = -1;
-        this._settleAnimalIndex = 0;
-        this._settleNextAnimal();
+        this._showInfoCard('结算阶段', () => {
+            GameStateManager.instance.setState(GamePhase.SETTLE);
+            if (this._handCardView) this._handCardView.clear();
+            this._selectedHandIndex = -1;
+            this._settleAnimalIndex = 0;
+            this._settleNextAnimal();
+        });
     }
 
     /** 逐只入住动物（每 500ms 一只），已满或无法入住的类型自动跳过 */
@@ -393,8 +451,7 @@ export class GameController extends Component {
             dialogView.show(
                 `游戏结束\n总分: ${ScoreManager.instance.totalScore}`,
                 () => {
-                    dialogView.hide();
-                    dialogNode.destroy();
+                    director.loadScene('Main');
                 },
             );
         }

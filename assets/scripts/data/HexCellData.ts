@@ -2,7 +2,7 @@ import { TerrainType } from './TerrainType';
 
 /** 六边形格子数据模型 */
 export class HexCellData {
-    terrainType: TerrainType = TerrainType.EMPTY;
+    terrainType: TerrainType = TerrainType.ERODED;
     height: number = 0;
     readonly gridX: number;
     readonly gridY: number;
@@ -13,6 +13,6 @@ export class HexCellData {
     }
 
     isEmpty(): boolean {
-        return this.terrainType === TerrainType.EMPTY;
+        return this.terrainType === TerrainType.ERODED;
     }
 }

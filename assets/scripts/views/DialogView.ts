@@ -43,6 +43,7 @@ export class DialogView extends Component {
         if (confirmNode) {
             confirmNode.once(Node.EventType.TOUCH_END, () => {
                 if (this._confirmCallback) this._confirmCallback();
+                this.hide();
             }, this);
         }
 
@@ -50,6 +51,7 @@ export class DialogView extends Component {
         if (cancelNode) {
             cancelNode.once(Node.EventType.TOUCH_END, () => {
                 if (this._cancelCallback) this._cancelCallback();
+                this.hide();
             }, this);
         }
     }

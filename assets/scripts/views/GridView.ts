@@ -2,6 +2,7 @@ import { _decorator, Component, Prefab, Node, SpriteFrame, instantiate, Vec3 } f
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { HexCellView } from './HexCellView';
+import { HexCellRockView } from './HexCellRockView';
 const { ccclass, property } = _decorator;
 
 /**
@@ -55,6 +56,9 @@ export class GridView extends Component {
             view.setTerrain(type);
             view.setHighlight(false);
         }
+
+        // 动态管理 HexCellRockView：岩石格子动态添加，非岩石清除
+        this._syncRockView(node, type);
     }
 
     /** 切换格子高亮状态 */
@@ -71,15 +75,15 @@ export class GridView extends Component {
     }
 
     /**
-     * 更新格子堆叠高度（仅 ROCK 地形生效）
-     * 每层高度增加一个岩石贴图，偏移 22px
+     * 更新格子堆叠高度（仅 ROCK 地形生效，由 HexCellRockView 处理）
      */
     setCellHeight(col: number, row: number, height: number): void {
-        const key = `${col},${row}`;
-        const node = this._cellNodes.get(key);
+        const node = this._cellNodes.get(`${col},${row}`);
         if (!node) return;
-        const view = node.getComponent(HexCellView);
-        if (view) view.setHeight(height);
+        const rockView = node.getComponent(HexCellRockView);
+        if (rockView) {
+            rockView.setHeight(height);
+        }
     }
 
     /** 在指定格子上添加动物节点 */
@@ -97,7 +101,7 @@ export class GridView extends Component {
         const view = node.getComponent(HexCellView);
         if (view) {
             view.setSpriteFrames(this._spriteFrames);
-            view.setTerrain(TerrainType.EMPTY);
+            view.setTerrain(TerrainType.ERODED);
             view.setDebugCoord(c, r);
         }
 
@@ -117,5 +121,27 @@ export class GridView extends Component {
         });
 
         this._cellNodes.set(`${c},${r}`, node);
+    }
+
+    /**
+     * 动态添加或移除 HexCellRockView 组件
+     * 岩石格子拥有堆叠能力，其他地形不需要
+     */
+    private _syncRockView(node: Node, type: TerrainType): void {
+        const existing = node.getComponent(HexCellRockView);
+        if (type === TerrainType.ROCK) {
+            if (!existing) {
+                const rockView = node.addComponent(HexCellRockView);
+                const rockSf = this._spriteFrames.get(TerrainType.ROCK);
+                if (rockSf) {
+                    rockView.rockSprite = rockSf;
+                }
+            }
+        } else {
+            if (existing) {
+                existing.clearStacks();
+                existing.destroy();
+            }
+        }
     }
 }

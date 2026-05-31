@@ -1,6 +1,6 @@
 /** 地形类型枚举 */
 export enum TerrainType {
-    EMPTY = 'empty',
+    ERODED = 'eroded',
     GRASS = 'grass',
     ROCK = 'rock',
     WATER = 'water',
