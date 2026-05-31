@@ -5,6 +5,7 @@ import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
 import { GameStateManager, GamePhase } from '../logic/GameStateManager';
+import { GameEvents } from '../events/GameEvents';
 import { TerrainEvolutionManager } from '../logic/TerrainEvolutionManager';
 import { ScoreManager } from '../logic/ScoreManager';
 import { GridView } from '../views/GridView';
@@ -43,11 +44,6 @@ export class GameController extends Component {
     @property(SpriteFrame)
     waterSprite: SpriteFrame | null = null;
 
-    // ── Tick progress (drag from Hierarchy) ──
-
-    @property(Label)
-    tickLabel: Label | null = null;
-
     @property(Node)
     handCardsContainer: Node | null = null;
 
@@ -74,6 +70,9 @@ export class GameController extends Component {
 
     @property(SpriteFrame)
     hippoSprite: SpriteFrame | null = null;
+
+    @property(Label)
+    phaseLabel: Label | null = null;
 
     private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _gridView: GridView | null = null;
@@ -139,9 +138,12 @@ export class GameController extends Component {
             this._drawPanelView = panelNode.getComponent(DrawPanelView);
         }
 
-        // 5) Find score / round UI
-        this._updateRoundLabel();
-        this._updateScoreLabel();
+        // 5) Listen to game state changes for phase label
+        GameStateManager.instance.eventTarget.on(
+            GameEvents.STATE_CHANGED,
+            (phase: GamePhase) => this._updatePhaseLabel(phase),
+        );
+        this._updatePhaseLabel(GameStateManager.instance.phase);
 
         this._initAnimalSprites();
     }
@@ -233,7 +235,6 @@ export class GameController extends Component {
 
     /** 进入抽取阶段：生成随机分组并显示抽取面板 */
     private _startDrawPhase(): void {
-        this._clearTickLabel();
         DrawManager.instance.generateGroups();
         GameStateManager.instance.setState(GamePhase.DRAW);
 
@@ -350,9 +351,6 @@ export class GameController extends Component {
             }
         }
 
-        // Update tick progress label
-        this._updateTickLabel();
-
         if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
             this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
         } else {
@@ -362,14 +360,11 @@ export class GameController extends Component {
 
     /** 演化完成：计算本轮分数，进入下一轮或入住阶段 */
     private _onEvolutionComplete(): void {
-        this._clearTickLabel();
         const roundScore = ScoreManager.instance.calculateRoundScore();
         ScoreManager.instance.addRoundScore(roundScore);
-        this._updateScoreLabel();
 
         this._currentRound++;
         if (this._currentRound <= this._maxRounds) {
-            this._updateRoundLabel();
             this._startDrawPhase();
         } else {
             this._startSettlementPhase();
@@ -430,7 +425,6 @@ export class GameController extends Component {
             animal.settledCount++;
             this._updateTargetAnimalCount(this._settleAnimalIndex);
             ScoreManager.instance.addAnimalScore(1);
-            this._updateScoreLabel();
         }
 
         // Advance to next type if current type is fully settled or has no valid cells
@@ -471,45 +465,10 @@ export class GameController extends Component {
         }
     }
 
-    // ── UI helpers ──
-
-    private _updateRoundLabel(): void {
-        const roundLabel = this._findDescendant('RoundLabel');
-        if (roundLabel) {
-            const label = roundLabel.getComponent(Label);
-            if (label) label.string = `Round ${this._currentRound}`;
+    private _updatePhaseLabel(phase: GamePhase): void {
+        if (this.phaseLabel) {
+            this.phaseLabel.string = phase;
         }
     }
 
-    private _updateScoreLabel(): void {
-        const scoreLabel = this._findDescendant('ScoreLabel');
-        if (scoreLabel) {
-            const label = scoreLabel.getComponent(Label);
-            if (label) label.string = `${ScoreManager.instance.totalScore}`;
-        }
-    }
-
-    private _updateTickLabel(): void {
-        if (this.tickLabel) {
-            this.tickLabel.string = `${this._tickCount}/${TerrainEvolutionManager.instance.maxTicks}`;
-        }
-    }
-
-    private _clearTickLabel(): void {
-        if (this.tickLabel) {
-            this.tickLabel.string = '';
-        }
-    }
-
-    private _findDescendant(name: string): Node | null {
-        const stack: Node[] = [this.node];
-        while (stack.length > 0) {
-            const node = stack.pop()!;
-            if (node.name === name) return node;
-            for (let i = node.children.length - 1; i >= 0; i--) {
-                stack.push(node.children[i]);
-            }
-        }
-        return null;
-    }
 }
