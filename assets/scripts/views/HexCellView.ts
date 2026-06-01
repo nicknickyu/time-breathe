@@ -1,6 +1,7 @@
-import { _decorator, Component, Sprite, SpriteFrame, UITransform, Color, Label } from 'cc';
+import { _decorator, Component, Sprite, UITransform, Color, Label } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { DEBUG_LABEL } from '../constants/DebugConfig';
+import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -12,7 +13,7 @@ export class HexCellView extends Component {
     @property(Sprite)
     topSprite: Sprite | null = null;
 
-    private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
+    private _spriteConfig: SpriteConfig | null = null;
     private _currentType: TerrainType = TerrainType.ERODED;
     private _debugLabel: Label | null = null;
 
@@ -29,8 +30,8 @@ export class HexCellView extends Component {
         }
     }
 
-    setSpriteFrames(map: Map<TerrainType, SpriteFrame>): void {
-        this._spriteFrames = map;
+    setSpriteConfig(config: SpriteConfig): void {
+        this._spriteConfig = config;
         this._applyVisual();
     }
 
@@ -62,8 +63,9 @@ export class HexCellView extends Component {
 
     /** 应用当前地形的贴图到 Sprite */
     private _applyVisual(): void {
-        const sf = this._spriteFrames.get(this._currentType);
-        if (sf && this.topSprite) {
+        if (!this._spriteConfig || !this.topSprite) return;
+        const sf = this._spriteConfig.getTerrainFrame(this._currentType);
+        if (sf) {
             this.topSprite.spriteFrame = sf;
         }
     }

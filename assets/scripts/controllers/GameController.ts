@@ -1,7 +1,6 @@
-import { _decorator, Component, Prefab, SpriteFrame, instantiate, Node, Label, Vec3, director } from 'cc';
+import { _decorator, Component, Prefab, instantiate, Node, Label, Vec3, director } from 'cc';
 import { DialogView } from '../views/DialogView';
 import { ConfirmDialogView } from '../views/ConfirmDialogView';
-import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
 import { GameStateManager, GamePhase } from '../logic/GameStateManager';
@@ -11,10 +10,10 @@ import { ScoreManager } from '../logic/ScoreManager';
 import { GridView } from '../views/GridView';
 import { DrawPanelView } from '../views/DrawPanelView';
 import { HandCardView } from '../views/HandCardView';
-import { AnimalType } from '../data/AnimalData';
 import { AnimalSettlementManager } from '../logic/AnimalSettlementManager';
 import { AnimalView } from '../views/AnimalView';
 import { GAME_INTRO_TEXT } from '../constants/GameTextConfig';
+import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -30,19 +29,8 @@ export class GameController extends Component {
     @property(Prefab)
     drawPanelPrefab: Prefab | null = null;
 
-    // ── Terrain textures for hand cards / draw panel (drag from Assets panel) ──
-
-    @property(SpriteFrame)
-    sandSprite: SpriteFrame | null = null;
-
-    @property(SpriteFrame)
-    grassSprite: SpriteFrame | null = null;
-
-    @property(SpriteFrame)
-    rockSprite: SpriteFrame | null = null;
-
-    @property(SpriteFrame)
-    waterSprite: SpriteFrame | null = null;
+    @property(SpriteConfig)
+    spriteConfig: SpriteConfig | null = null;
 
     @property(Node)
     handCardsContainer: Node | null = null;
@@ -62,24 +50,13 @@ export class GameController extends Component {
     @property(Node)
     targetAnimalsContainer: Node | null = null;
 
-    @property(SpriteFrame)
-    buffaloSprite: SpriteFrame | null = null;
-
-    @property(SpriteFrame)
-    owlSprite: SpriteFrame | null = null;
-
-    @property(SpriteFrame)
-    hippoSprite: SpriteFrame | null = null;
-
     @property(Label)
     phaseLabel: Label | null = null;
 
-    private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
     private _gridView: GridView | null = null;
     private _handCardView: HandCardView | null = null;
     private _drawPanelView: DrawPanelView | null = null;
     private _selectedHandIndex: number = -1;
-    private _animalSpriteFrames: Map<AnimalType, SpriteFrame> = new Map();
     private _settleAnimalIndex: number = 0;
     private _targetAnimalViews: AnimalView[] = [];
     private _currentRound: number = 1;
@@ -87,25 +64,8 @@ export class GameController extends Component {
     private _tickCount: number = 0;
 
     start(): void {
-        // Build sprite frame map from editor-assigned references
-        this._initSpriteFrames();
         this._initGameSetup();
         this._showStartDialog();
-    }
-
-    private _initSpriteFrames(): void {
-        const map = new Map<TerrainType, SpriteFrame>();
-        map.set(TerrainType.ERODED, this.sandSprite!);
-        map.set(TerrainType.GRASS, this.grassSprite!);
-        map.set(TerrainType.ROCK, this.rockSprite!);
-        map.set(TerrainType.WATER, this.waterSprite!);
-        this._spriteFrames = map;
-    }
-
-    private _initAnimalSprites(): void {
-        this._animalSpriteFrames.set(AnimalType.BISON, this.buffaloSprite!);
-        this._animalSpriteFrames.set(AnimalType.OWL, this.owlSprite!);
-        this._animalSpriteFrames.set(AnimalType.HIPPO, this.hippoSprite!);
     }
 
     // ── Initialization ──
@@ -119,7 +79,7 @@ export class GameController extends Component {
         const gridRoot = new Node('GridRoot');
         this.node.addChild(gridRoot);
         this._gridView = gridRoot.addComponent(GridView);
-        this._gridView.init(this.hexCellPrefab, this._spriteFrames);
+        this._gridView.init(this.hexCellPrefab, this.spriteConfig!);
         this._gridView.buildGrid();
         this._gridView.onCellTap((col, row) => this._onGridCellTapped(col, row));
 
@@ -127,7 +87,7 @@ export class GameController extends Component {
         const handRoot = new Node('HandCardRoot');
         this.node.addChild(handRoot);
         this._handCardView = handRoot.addComponent(HandCardView);
-        this._handCardView.init(this.hexCellPrefab, this._spriteFrames);
+        this._handCardView.init(this.hexCellPrefab, this.spriteConfig!);
         this._handCardView.handCardsContainer = this.handCardsContainer;
         this._handCardView.onCardSelected((index) => this._onHandCardSelected(index));
 
@@ -144,8 +104,6 @@ export class GameController extends Component {
             (phase: GamePhase) => this._updatePhaseLabel(phase),
         );
         this._updatePhaseLabel(GameStateManager.instance.phase);
-
-        this._initAnimalSprites();
     }
 
     /** 玩家确认后启动游戏流程 */
@@ -212,7 +170,7 @@ export class GameController extends Component {
         }
 
         const animal = animals[index];
-        const spriteFrame = this._animalSpriteFrames.get(animal.type);
+        const spriteFrame = this.spriteConfig!.getAnimalFrame(animal.type);
 
         if (spriteFrame && this.animalPrefab && this.targetAnimalsContainer) {
             const node = instantiate(this.animalPrefab);
@@ -241,7 +199,7 @@ export class GameController extends Component {
         if (this._drawPanelView) {
             this._drawPanelView.show(
                 DrawManager.instance.groups,
-                this._spriteFrames,
+                this.spriteConfig!,
                 () => this._onDrawConfirmed(),
             );
         }
@@ -405,7 +363,7 @@ export class GameController extends Component {
 
         if (animal.settledCount < maxSettle) {
             const cell = validCells[animal.settledCount];
-            const spriteFrame = this._animalSpriteFrames.get(animal.type);
+            const spriteFrame = this.spriteConfig!.getAnimalFrame(animal.type);
 
             if (this.animalPrefab && spriteFrame) {
                 const animalNode = instantiate(this.animalPrefab);

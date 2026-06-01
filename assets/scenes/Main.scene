@@ -52,7 +52,7 @@
     },
     "autoReleaseAssets": false,
     "_globals": {
-      "__id__": 35
+      "__id__": 38
     },
     "_id": "c936737d-171d-46b2-b49d-1f14c67fa85f"
   },
@@ -79,21 +79,24 @@
       },
       {
         "__id__": 29
+      },
+      {
+        "__id__": 31
       }
     ],
     "_active": true,
     "_components": [
       {
-        "__id__": 31
-      },
-      {
-        "__id__": 32
-      },
-      {
-        "__id__": 33
-      },
-      {
         "__id__": 34
+      },
+      {
+        "__id__": 35
+      },
+      {
+        "__id__": 36
+      },
+      {
+        "__id__": 37
       }
     ],
     "_prefab": null,
@@ -1199,6 +1202,120 @@
     "_id": "4cbalvStVAkrmlYUWyvr+U"
   },
   {
+    "__type__": "cc.Node",
+    "_name": "SpriteConfig",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 2
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 32
+      },
+      {
+        "__id__": 33
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "f5Y3Ch/LVPrbejb3f305mu"
+  },
+  {
+    "__type__": "cc.UITransform",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 31
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 100,
+      "height": 100
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "91dQNmO1ROpodsQ4RGUclA"
+  },
+  {
+    "__type__": "9b455K/7E5DILuxjIjMUd79",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 31
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "terrainSprites": [
+      {
+        "__uuid__": "d7ce7c41-2e03-4a91-8aae-1274b1203f9e@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "4fa5a8fd-284c-43c2-a599-7ce6c8a98cc2@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "0a0b6329-ec90-4e87-b070-5fb6fbb02d52@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "d8d64d91-1d93-4c9d-987d-d7db5108181e@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      }
+    ],
+    "animalSprites": [
+      {
+        "__uuid__": "ccf1de8a-4122-4358-be99-df08ee5bf432@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "724e59b7-cf8b-41c4-8a83-5d2d939e5848@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "4b9d4187-02e2-40a3-a864-c6ac2fe8670e@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      }
+    ],
+    "_id": "d7c70uy5VEK449xOtkZoYD"
+  },
+  {
     "__type__": "cc.UITransform",
     "_name": "",
     "_objFlags": 0,
@@ -1284,21 +1401,8 @@
       "__uuid__": "5239a365-7e3f-4c65-b683-1443db467fed",
       "__expectedType__": "cc.Prefab"
     },
-    "sandSprite": {
-      "__uuid__": "d7ce7c41-2e03-4a91-8aae-1274b1203f9e@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "grassSprite": {
-      "__uuid__": "4fa5a8fd-284c-43c2-a599-7ce6c8a98cc2@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "rockSprite": {
-      "__uuid__": "0a0b6329-ec90-4e87-b070-5fb6fbb02d52@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "waterSprite": {
-      "__uuid__": "d8d64d91-1d93-4c9d-987d-d7db5108181e@f9941",
-      "__expectedType__": "cc.SpriteFrame"
+    "spriteConfig": {
+      "__id__": 33
     },
     "handCardsContainer": {
       "__id__": 27
@@ -1322,18 +1426,6 @@
     "targetAnimalsContainer": {
       "__id__": 29
     },
-    "buffaloSprite": {
-      "__uuid__": "ccf1de8a-4122-4358-be99-df08ee5bf432@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "owlSprite": {
-      "__uuid__": "724e59b7-cf8b-41c4-8a83-5d2d939e5848@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "hippoSprite": {
-      "__uuid__": "4b9d4187-02e2-40a3-a864-c6ac2fe8670e@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
     "phaseLabel": {
       "__id__": 13
     },
@@ -1342,28 +1434,28 @@
   {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 36
-    },
-    "shadows": {
-      "__id__": 37
-    },
-    "_skybox": {
-      "__id__": 38
-    },
-    "fog": {
       "__id__": 39
     },
-    "octree": {
+    "shadows": {
       "__id__": 40
     },
-    "skin": {
+    "_skybox": {
       "__id__": 41
     },
-    "lightProbeInfo": {
+    "fog": {
       "__id__": 42
     },
-    "postSettings": {
+    "octree": {
       "__id__": 43
+    },
+    "skin": {
+      "__id__": 44
+    },
+    "lightProbeInfo": {
+      "__id__": 45
+    },
+    "postSettings": {
+      "__id__": 46
     },
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false

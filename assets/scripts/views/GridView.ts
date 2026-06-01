@@ -1,8 +1,9 @@
-import { _decorator, Component, Prefab, Node, SpriteFrame, instantiate, Vec3 } from 'cc';
+import { _decorator, Component, Prefab, Node, instantiate, Vec3 } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { HexCellView } from './HexCellView';
 import { HexCellRockView } from './HexCellRockView';
+import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -14,14 +15,14 @@ export class GridView extends Component {
     @property(Prefab)
     hexCellPrefab: Prefab | null = null;
 
-    private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
+    private _spriteConfig: SpriteConfig | null = null;
     private _cellNodes: Map<string, Node> = new Map();
     private _cellBaseY: Map<string, number> = new Map();
     private _onCellTapCb: ((col: number, row: number) => void) | null = null;
 
-    init(prefab: Prefab | null, spriteFrames: Map<TerrainType, SpriteFrame>): void {
+    init(prefab: Prefab | null, spriteConfig: SpriteConfig): void {
         this.hexCellPrefab = prefab;
-        this._spriteFrames = spriteFrames;
+        this._spriteConfig = spriteConfig;
     }
 
     /** 根据 HexGridManager 数据构建网格节点 */
@@ -100,7 +101,7 @@ export class GridView extends Component {
         const node = instantiate(this.hexCellPrefab);
         const view = node.getComponent(HexCellView);
         if (view) {
-            view.setSpriteFrames(this._spriteFrames);
+            view.setSpriteConfig(this._spriteConfig!);
             view.setTerrain(TerrainType.ERODED);
             view.setDebugCoord(c, r);
         }
@@ -132,7 +133,7 @@ export class GridView extends Component {
         if (type === TerrainType.ROCK) {
             if (!existing) {
                 const rockView = node.addComponent(HexCellRockView);
-                const rockSf = this._spriteFrames.get(TerrainType.ROCK);
+                const rockSf = this._spriteConfig!.getTerrainFrame(TerrainType.ROCK);
                 if (rockSf) {
                     rockView.rockSprite = rockSf;
                 }

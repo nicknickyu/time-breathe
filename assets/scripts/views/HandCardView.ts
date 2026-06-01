@@ -1,6 +1,7 @@
-import { _decorator, Component, Node, SpriteFrame, Prefab, instantiate, Sprite, Vec3, UITransform } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, Sprite, Vec3, UITransform } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { HexCellView } from './HexCellView';
+import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -15,15 +16,15 @@ export class HandCardView extends Component {
     @property(Node)
     handCardsContainer: Node | null = null;
 
-    private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
+    private _spriteConfig: SpriteConfig | null = null;
     private _cardNodes: Node[] = [];
     private _currentTiles: TerrainType[] = [];
     private _selectedIndex: number = -1;
     private _onCardSelectedCb: ((index: number) => void) | null = null;
 
-    init(prefab: Prefab | null, spriteFrames: Map<TerrainType, SpriteFrame>): void {
+    init(prefab: Prefab | null, spriteConfig: SpriteConfig): void {
         this.hexCellPrefab = prefab;
-        this._spriteFrames = spriteFrames;
+        this._spriteConfig = spriteConfig;
     }
 
     /** 展示手牌（水平排列在容器中） */
@@ -40,13 +41,13 @@ export class HandCardView extends Component {
                 node = instantiate(this.hexCellPrefab);
                 const view = node.getComponent(HexCellView);
                 if (view) {
-                    view.setSpriteFrames(this._spriteFrames);
+                    view.setSpriteConfig(this._spriteConfig!);
                     view.setTerrain(tiles[i]);
                 }
             } else {
                 node = new Node('HandCard');
                 const sprite = node.addComponent(Sprite);
-                sprite.spriteFrame = this._spriteFrames.get(tiles[i]) ?? null;
+                sprite.spriteFrame = this._spriteConfig!.getTerrainFrame(tiles[i]);
                 const uiTransform = node.addComponent(UITransform);
                 uiTransform.width = 65;
                 uiTransform.height = 89;

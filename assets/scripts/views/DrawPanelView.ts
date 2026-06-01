@@ -1,6 +1,6 @@
-import { _decorator, Component, Node, SpriteFrame, Sprite, Toggle, UITransform, Vec3 } from 'cc';
-import { TerrainType } from '../data/TerrainType';
+import { _decorator, Component, Node, Sprite, Toggle, UITransform, Vec3 } from 'cc';
 import { DrawGroup } from '../logic/DrawManager';
+import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
 /**
@@ -10,7 +10,7 @@ const { ccclass, property } = _decorator;
 @ccclass('DrawPanelView')
 export class DrawPanelView extends Component {
     private _groups: DrawGroup[] = [];
-    private _spriteFrames: Map<TerrainType, SpriteFrame> = new Map();
+    private _spriteConfig: SpriteConfig | null = null;
     private _confirmCallback: (() => void) | null = null;
     private _confirmNode: Node | null = null;
     private _confirmHandler: (() => void) | null = null;
@@ -22,11 +22,11 @@ export class DrawPanelView extends Component {
     /** 显示抽取面板，填充地形预览并绑定确认按钮 */
     show(
         groups: DrawGroup[],
-        spriteFrames: Map<TerrainType, SpriteFrame>,
+        spriteConfig: SpriteConfig,
         onConfirm: () => void,
     ): void {
         this._groups = groups;
-        this._spriteFrames = spriteFrames;
+        this._spriteConfig = spriteConfig;
         this._confirmCallback = onConfirm;
         this.node.active = true;
 
@@ -82,7 +82,7 @@ export class DrawPanelView extends Component {
             for (let t = 0; t < group.tiles.length; t++) {
                 const icon = new Node('TerrainIcon');
                 const sprite = icon.addComponent(Sprite);
-                sprite.spriteFrame = this._spriteFrames.get(group.tiles[t]) ?? null;
+                sprite.spriteFrame = this._spriteConfig!.getTerrainFrame(group.tiles[t]);
 
                 const uiTransform = icon.addComponent(UITransform);
                 uiTransform.width = 65;
