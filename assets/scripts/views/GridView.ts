@@ -48,13 +48,20 @@ export class GridView extends Component {
         this._onCellTapCb = cb;
     }
 
-    /** 更新单个格子的地形显示 */
-    updateCellVisual(col: number, row: number, type: TerrainType): void {
+    /**
+     * 更新单个格子的地形显示
+     * @param transitionDuration 传入时长则使用转场效果，否则直接切换
+     */
+    updateCellVisual(col: number, row: number, type: TerrainType, transitionDuration?: number): void {
         const node = this._cellNodes.get(`${col},${row}`);
         if (!node) return;
         const view = node.getComponent(HexCellView);
         if (view) {
-            view.setTerrain(type);
+            if (transitionDuration !== undefined) {
+                view.startTerrainTransition(type, transitionDuration);
+            } else {
+                view.setTerrain(type);
+            }
             view.setHighlight(false);
         }
 

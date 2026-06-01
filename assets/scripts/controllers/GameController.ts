@@ -259,7 +259,7 @@ export class GameController extends Component {
         const terrainType = DrawManager.instance.currentHand[this._selectedHandIndex];
         mgr.setCellTerrain(col, row, terrainType);
         if (this._gridView) {
-            this._gridView.updateCellVisual(col, row, terrainType);
+            this._gridView.updateCellVisual(col, row, terrainType, 0.8);
         }
 
         DrawManager.instance.removePlacedTile(this._selectedHandIndex);
@@ -304,7 +304,7 @@ export class GameController extends Component {
         // Apply visual updates for every change
         for (const change of changes) {
             if (this._gridView) {
-                this._gridView.updateCellVisual(change.col, change.row, change.terrainType);
+                this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.8);
                 this._gridView.setCellHeight(change.col, change.row, change.height);
             }
         }

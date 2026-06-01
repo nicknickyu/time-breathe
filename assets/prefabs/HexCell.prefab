@@ -543,6 +543,10 @@
     "topSprite": {
       "__id__": 11
     },
+    "wipeBaseMaterial": {
+      "__uuid__": "0abbd626-9211-4583-8c61-c42baf42111d",
+      "__expectedType__": "cc.Material"
+    },
     "_id": ""
   },
   {
