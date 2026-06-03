@@ -4,4 +4,5 @@ export enum TerrainType {
     GRASS = 'grass',
     ROCK = 'rock',
     WATER = 'water',
+    EROSION_SOURCE = 'erosion_source',
 }

@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Sprite, UITransform, Color, Label, tween, Tween } from 'cc';
+import { _decorator, Component, Node, Sprite, UITransform, Color, Label, tween, Tween, gfx } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { DEBUG_LABEL } from '../constants/DebugConfig';
 import { SpriteConfig } from '../constants/SpriteConfig';
@@ -62,11 +62,10 @@ export class HexCellView extends Component {
 
         this._currentType = type;
 
-        // --- 覆盖层渐入新贴图，主 Sprite 暂保持旧贴图 ---
+        // --- 覆盖层节点，渲染在主 Sprite 之上 ---
         const overlayNode = new Node('TransitionOverlay');
         const topNode = this.topSprite.node;
 
-        // 插入到 Top 同级之后，渲染在 Top 之上
         const topIndex = this.node.children.indexOf(topNode);
         if (topIndex >= 0) {
             this.node.insertChild(overlayNode, topIndex + 1);
@@ -83,27 +82,56 @@ export class HexCellView extends Component {
             overlayTransform.anchorPoint.set(topTransform.anchorPoint.x, topTransform.anchorPoint.y);
         }
 
-        // 覆盖层显示新贴图，起始透明
         const overlaySprite = overlayNode.addComponent(Sprite);
         overlaySprite.spriteFrame = newSf;
-        overlaySprite.color = new Color(255, 255, 255, 0);
 
         this._transitionNode = overlayNode;
 
-        // Tween 驱动覆盖层 alpha 0 → 255
-        const tweenTarget = { alpha: 0 };
-        this._transitionTween = tween(tweenTarget)
-            .to(duration, { alpha: 255 }, {
-                onUpdate: (target: { alpha: number }) => {
-                    overlaySprite.color = new Color(255, 255, 255, target.alpha);
-                },
-            })
-            .call(() => {
-                // 覆盖层完成 → 主 Sprite 切到新贴图，销毁覆盖层
-                this.topSprite!.spriteFrame = newSf;
-                this._cleanupTransition();
-            })
-            .start();
+        if (type === TerrainType.ERODED) {
+            // ---- eroded：灰色 → 白色，渐变提亮显现 ----
+            overlaySprite.color = new Color(80, 80, 80, 255);
+            const tweenTarget = { r: 80, g: 80, b: 80 };
+            this._transitionTween = tween(tweenTarget)
+                .to(duration, { r: 255, g: 255, b: 255 }, {
+                    onUpdate: (target: { r: number; g: number; b: number }) => {
+                        overlaySprite.color = new Color(target.r, target.g, target.b, 255);
+                    },
+                })
+                .call(() => {
+                    this.topSprite!.spriteFrame = newSf;
+                    this._cleanupTransition();
+                })
+                .start();
+        } else {
+            // ---- 非 eroded：底层直接切到新贴图，覆盖层加亮发光 → 消失 ----
+            this.topSprite!.spriteFrame = newSf;
+
+            const matInst = overlaySprite.getMaterialInstance(0);
+            if (matInst) {
+                matInst.overridePipelineStates({
+                    blendState: {
+                        targets: [{
+                            blend: true,
+                            blendSrc: gfx.BlendFactor.SRC_ALPHA,
+                            blendDst: gfx.BlendFactor.ONE,
+                        }],
+                    },
+                });
+            }
+            overlaySprite.color = new Color(255, 255, 255, 255);
+
+            const tweenTarget = { r: 255, g: 255, b: 255 };
+            this._transitionTween = tween(tweenTarget)
+                .to(duration, { r: 0, g: 0, b: 0 }, {
+                    onUpdate: (target: { r: number; g: number; b: number }) => {
+                        overlaySprite.color = new Color(target.r, target.g, target.b, 255);
+                    },
+                })
+                .call(() => {
+                    this._cleanupTransition();
+                })
+                .start();
+        }
     }
 
     /** 取消并清理进行中的转场（安全调用，无转场时无副作用） */

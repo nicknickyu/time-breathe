@@ -1,5 +1,4 @@
 import { _decorator, Component, Prefab, instantiate, Node, Label, Vec3, director } from 'cc';
-import { DialogView } from '../views/DialogView';
 import { ConfirmDialogView } from '../views/ConfirmDialogView';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
@@ -14,6 +13,7 @@ import { AnimalSettlementManager } from '../logic/AnimalSettlementManager';
 import { AnimalView } from '../views/AnimalView';
 import { GAME_INTRO_TEXT } from '../constants/GameTextConfig';
 import { SpriteConfig } from '../constants/SpriteConfig';
+import { TerrainType } from '../data/TerrainType';
 const { ccclass, property } = _decorator;
 
 /**
@@ -75,12 +75,21 @@ export class GameController extends Component {
         // 1) Grid data
         HexGridManager.instance.generateGrid(12, 4);
 
+        // 1.1) Place erosion source on a random non-corner cell
+        const erosionPos = HexGridManager.instance.placeErosionSourceAtRandom();
+
         // 2) Grid view
         const gridRoot = new Node('GridRoot');
         this.node.addChild(gridRoot);
         this._gridView = gridRoot.addComponent(GridView);
         this._gridView.init(this.hexCellPrefab, this.spriteConfig!);
         this._gridView.buildGrid();
+
+        // 2.1) Update visual for erosion source cell
+        if (erosionPos) {
+            this._gridView.updateCellVisual(erosionPos.col, erosionPos.row, TerrainType.EROSION_SOURCE);
+        }
+
         this._gridView.onCellTap((col, row) => this._onGridCellTapped(col, row));
 
         // 3) Hand card view
@@ -292,7 +301,7 @@ export class GameController extends Component {
 
             this._tickCount = 0;
             TerrainEvolutionManager.instance.startEvolution(6);
-            this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+            this.scheduleOnce(() => this._doEvolutionTick(), 0.8);
         });
     }
 
@@ -310,7 +319,7 @@ export class GameController extends Component {
         }
 
         if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
-            this.scheduleOnce(() => this._doEvolutionTick(), 0.5);
+            this.scheduleOnce(() => this._doEvolutionTick(), 0.8);
         } else {
             this._onEvolutionComplete();
         }
@@ -382,7 +391,7 @@ export class GameController extends Component {
 
             animal.settledCount++;
             this._updateTargetAnimalCount(this._settleAnimalIndex);
-            ScoreManager.instance.addAnimalScore(1);
+            ScoreManager.instance.addAnimalScore(1, animal.type);
         }
 
         // Advance to next type if current type is fully settled or has no valid cells
@@ -393,16 +402,21 @@ export class GameController extends Component {
         this.scheduleOnce(() => this._settleNextAnimal(), 0.5);
     }
 
-    /** 全部动物入住完成：弹出 Game Over 对话框，展示总分 */
+    /** 全部动物入住完成：弹出 Game Over 对话框，展示分数明细 */
     private _onAllAnimalsSettled(): void {
-        if (!this.dialogPrefab) return;
+        if (!this.confirmDialogPrefab) return;
 
-        const dialogNode = instantiate(this.dialogPrefab);
+        ScoreManager.instance.finalize();
+
+        const dialogNode = instantiate(this.confirmDialogPrefab);
         this.node.addChild(dialogNode);
-        const dialogView = dialogNode.getComponent(DialogView);
+        const dialogView = dialogNode.getComponent(ConfirmDialogView);
         if (dialogView) {
+            dialogView.setPanelHeight(640);
+            dialogView.setTitle('游戏结束');
+            dialogView.setButtonText('再来一局');
             dialogView.show(
-                `游戏结束\n总分: ${ScoreManager.instance.totalScore}`,
+                ScoreManager.instance.getScoreSummary(),
                 () => {
                     director.loadScene('Main');
                 },

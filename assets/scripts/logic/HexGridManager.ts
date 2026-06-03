@@ -100,6 +100,33 @@ export class HexGridManager {
         return candidates.filter(n => this.isInBounds(n.col, n.row));
     }
 
+    /**
+     * 获取所有非边角格子（拥有完整 6 个邻居）的坐标列表
+     */
+    getNonCornerCells(): { col: number; row: number }[] {
+        const result: { col: number; row: number }[] = [];
+        for (let c = 0; c < this._cols; c++) {
+            for (let r = 0; r < this._rows; r++) {
+                if (this.getNeighbors(c, r).length === 6) {
+                    result.push({ col: c, row: r });
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 随机选择一个非边角格子设置为侵蚀源
+     * @returns 被选中的坐标，如果没有可用格子则返回 null
+     */
+    placeErosionSourceAtRandom(): { col: number; row: number } | null {
+        const candidates = this.getNonCornerCells();
+        if (candidates.length === 0) return null;
+        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        this.setCellTerrain(chosen.col, chosen.row, TerrainType.EROSION_SOURCE);
+        return chosen;
+    }
+
     /** 计算网格整体的原点坐标（左上角） */
     getGridOrigin(): { x: number; y: number } {
         const totalW = (this._cols - 1) * this.SPACING_X + this.CELL_WIDTH;

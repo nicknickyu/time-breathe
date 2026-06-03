@@ -1297,8 +1297,16 @@
       {
         "__uuid__": "d8d64d91-1d93-4c9d-987d-d7db5108181e@f9941",
         "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "65d80b54-c3e1-4cd0-b14b-5b44916f819e@f9941",
+        "__expectedType__": "cc.SpriteFrame"
       }
     ],
+    "erosionSourceMarkerSprite": {
+      "__uuid__": "f891f540-7ec8-474e-90ef-9c70e339bee9@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
     "animalSprites": [
       {
         "__uuid__": "ccf1de8a-4122-4358-be99-df08ee5bf432@f9941",

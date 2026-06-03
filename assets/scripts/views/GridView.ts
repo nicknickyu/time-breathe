@@ -3,6 +3,7 @@ import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { HexCellView } from './HexCellView';
 import { HexCellRockView } from './HexCellRockView';
+import { ErosionSourceView } from './ErosionSourceView';
 import { SpriteConfig } from '../constants/SpriteConfig';
 const { ccclass, property } = _decorator;
 
@@ -67,6 +68,9 @@ export class GridView extends Component {
 
         // 动态管理 HexCellRockView：岩石格子动态添加，非岩石清除
         this._syncRockView(node, type);
+
+        // 动态管理 ErosionSourceView：侵蚀源格子添加标记，非侵蚀源清除
+        this._syncErosionSourceView(node, type);
     }
 
     /** 切换格子高亮状态 */
@@ -148,6 +152,28 @@ export class GridView extends Component {
         } else {
             if (existing) {
                 existing.clearStacks();
+                existing.destroy();
+            }
+        }
+    }
+
+    /**
+     * 动态添加或移除 ErosionSourceView 组件
+     * 侵蚀源格子拥有标记附着物，其他地形不需要
+     */
+    private _syncErosionSourceView(node: Node, type: TerrainType): void {
+        const existing = node.getComponent(ErosionSourceView);
+        if (type === TerrainType.EROSION_SOURCE) {
+            if (!existing) {
+                const erosionView = node.addComponent(ErosionSourceView);
+                const markerSf = this._spriteConfig!.erosionSourceMarkerSprite;
+                if (markerSf) {
+                    erosionView.setMarkerSprite(markerSf);
+                }
+            }
+        } else {
+            if (existing) {
+                existing.clearMarker();
                 existing.destroy();
             }
         }

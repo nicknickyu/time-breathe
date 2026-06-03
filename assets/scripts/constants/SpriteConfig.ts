@@ -17,8 +17,11 @@ const { ccclass, property } = _decorator;
 @ccclass('SpriteConfig')
 export class SpriteConfig extends Component {
 
-    @property({ type: [SpriteFrame], displayName: 'Terrain: [ERODED, GRASS, ROCK, WATER]' })
+    @property({ type: [SpriteFrame], displayName: 'Terrain: [ERODED, GRASS, ROCK, WATER, EROSION_SOURCE]' })
     terrainSprites: SpriteFrame[] = [];
+
+    @property(SpriteFrame)
+    erosionSourceMarkerSprite: SpriteFrame | null = null;
 
     @property({ type: [SpriteFrame], displayName: 'Animal: [BISON, OWL, HIPPO]' })
     animalSprites: SpriteFrame[] = [];
@@ -39,10 +42,11 @@ export class SpriteConfig extends Component {
 
     private _terrainIndex(type: TerrainType): number {
         switch (type) {
-            case TerrainType.ERODED: return 0;
-            case TerrainType.GRASS:  return 1;
-            case TerrainType.ROCK:   return 2;
-            case TerrainType.WATER:  return 3;
+            case TerrainType.ERODED:         return 0;
+            case TerrainType.GRASS:          return 1;
+            case TerrainType.ROCK:           return 2;
+            case TerrainType.WATER:          return 3;
+            case TerrainType.EROSION_SOURCE: return 4;
         }
     }
 
