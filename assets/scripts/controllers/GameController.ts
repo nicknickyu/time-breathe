@@ -48,6 +48,9 @@ export class GameController extends Component {
     infoCardPrefab: Prefab | null = null;
 
     @property(Node)
+    settingsButton: Node | null = null;
+
+    @property(Node)
     targetAnimalsContainer: Node | null = null;
 
     @property(Label)
@@ -107,7 +110,12 @@ export class GameController extends Component {
             this._drawPanelView = panelNode.getComponent(DrawPanelView);
         }
 
-        // 5) Listen to game state changes for phase label
+        // 5) Settings button
+        if (this.settingsButton) {
+            this.settingsButton.on(Node.EventType.TOUCH_END, () => this._onSettingsTapped(), this);
+        }
+
+        // 6) Listen to game state changes for phase label
         GameStateManager.instance.eventTarget.on(
             GameEvents.STATE_CHANGED,
             (phase: GamePhase) => this._updatePhaseLabel(phase),
@@ -138,6 +146,30 @@ export class GameController extends Component {
         }, 1);
     }
 
+    /** 点击设置按钮：弹出重新开始确认对话框 */
+    private _onSettingsTapped(): void {
+        if (!this.confirmDialogPrefab) return;
+        const dialogNode = instantiate(this.confirmDialogPrefab);
+        this.node.addChild(dialogNode);
+
+        const dialogView = dialogNode.getComponent(ConfirmDialogView);
+        if (dialogView) {
+            dialogView.setPanelHeight(320);
+            dialogView.setTitle('设置');
+            dialogView.setButtonText('确定');
+            dialogView.setCancelButtonText('取消');
+            dialogView.show(
+                '重新开始游戏？',
+                () => {
+                    director.loadScene('Main');
+                },
+                () => {
+                    dialogNode.destroy();
+                },
+            );
+        }
+    }
+
     /** 显示开始确认对话框（游戏说明） */
     private _showStartDialog(): void {
         if (!this.confirmDialogPrefab) return;
@@ -149,8 +181,12 @@ export class GameController extends Component {
             dialogView.setPanelHeight(640);
             dialogView.setTitle('游戏说明');
             dialogView.setButtonText('开始吧');
+            dialogView.setCancelButtonText('关闭');
             dialogView.show(
                 GAME_INTRO_TEXT,
+                () => {
+                    this._startGameFlow();
+                },
                 () => {
                     this._startGameFlow();
                 },
@@ -441,10 +477,15 @@ export class GameController extends Component {
             dialogView.setPanelHeight(720);
             dialogView.setTitle('游戏结束');
             dialogView.setButtonText('再来一局');
+            dialogView.setCancelButtonText('关闭');
             dialogView.show(
                 ScoreManager.instance.getScoreSummary(),
                 () => {
                     director.loadScene('Main');
+                },
+                () => {
+                    // 关闭按钮：销毁弹窗
+                    dialogNode.destroy();
                 },
             );
         }

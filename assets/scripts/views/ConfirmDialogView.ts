@@ -16,10 +16,14 @@ export class ConfirmDialogView extends Component {
     @property({ type: Node, displayName: '确认按钮' })
     private confirmButton: Node | null = null;
 
+    @property({ type: Node, displayName: '取消/关闭按钮' })
+    private cancelButton: Node | null = null;
+
     @property({ type: Node, displayName: '面板节点' })
     private panelNode: Node | null = null;
 
     private _confirmCallback: (() => void) | null = null;
+    private _cancelCallback: (() => void) | null = null;
 
     onLoad(): void {
         this.node.active = false;
@@ -27,6 +31,13 @@ export class ConfirmDialogView extends Component {
         if (this.confirmButton) {
             this.confirmButton.on(Node.EventType.TOUCH_END, () => {
                 if (this._confirmCallback) this._confirmCallback();
+                this.hide();
+            }, this);
+        }
+
+        if (this.cancelButton) {
+            this.cancelButton.on(Node.EventType.TOUCH_END, () => {
+                if (this._cancelCallback) this._cancelCallback();
                 this.hide();
             }, this);
         }
@@ -41,8 +52,9 @@ export class ConfirmDialogView extends Component {
         }
     }
 
-    show(content: string, onConfirm?: () => void): void {
+    show(content: string, onConfirm?: () => void, onCancel?: () => void): void {
         this._confirmCallback = onConfirm ?? null;
+        this._cancelCallback = onCancel ?? null;
         this.node.active = true;
         if (this.contentLabel) {
             this.contentLabel.string = content;
@@ -51,6 +63,7 @@ export class ConfirmDialogView extends Component {
 
     hide(): void {
         this._confirmCallback = null;
+        this._cancelCallback = null;
         this.node.active = false;
     }
 
@@ -69,6 +82,13 @@ export class ConfirmDialogView extends Component {
     setButtonText(text: string): void {
         if (this.confirmButton) {
             const btnLabel = this.confirmButton.getComponentInChildren(Label);
+            if (btnLabel) btnLabel.string = text;
+        }
+    }
+
+    setCancelButtonText(text: string): void {
+        if (this.cancelButton) {
+            const btnLabel = this.cancelButton.getComponentInChildren(Label);
             if (btnLabel) btnLabel.string = text;
         }
     }
