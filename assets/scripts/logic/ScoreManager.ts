@@ -21,7 +21,7 @@ const ANIMAL_DISPLAY: Record<string, string> = {
 
 /**
  * 分数管理器（单例）
- * 管理总分数，每轮地形分 + 动物入住分
+ * 管理总分数：终局地形分 + 动物入住分 - 侵蚀惩罚
  */
 export class ScoreManager {
     private static _instance: ScoreManager;
@@ -37,35 +37,50 @@ export class ScoreManager {
     /** 每种地形累计块数（跨轮次累加） */
     private _terrainCounts: Record<string, number> = {};
 
+    /** 侵蚀地块数量 */
+    private _erodedCount: number = 0;
+
+    /** 是否存在侵蚀源 */
+    private _hasErosionSource: boolean = false;
+
     /** 每种动物累计入住只数 */
     private _animalCounts: Record<string, number> = {};
 
     get totalScore(): number { return this._totalScore; }
 
-    /** 计算本轮分数：每个非侵蚀地格 = 1 分 */
-    calculateRoundScore(): number {
-        const cells = HexGridManager.instance.getAllCells();
-        return cells.filter(c => c.terrainType !== TerrainType.ERODED).length;
-    }
-
-    /** 累加本轮地形分 */
-    addRoundScore(roundScore: number): void {
-        this._totalScore += roundScore;
-    }
-
     /**
      * 最终结算：在游戏结束时调用一次，
-     * 扫描当前 grid 统计各地形块数，供 getScoreSummary() 使用。
+     * 扫描当前 grid 统计各地形块数，并根据最终地形块数一次性计分。
      */
     finalize(): void {
-        // 统计 final grid 的各地形块数
+        // 统计 final grid 的各地形块数、侵蚀地块、侵蚀源
         const cells = HexGridManager.instance.getAllCells();
         this._terrainCounts = {};
+        this._erodedCount = 0;
+        this._hasErosionSource = false;
+
         for (const cell of cells) {
-            if (cell.terrainType !== TerrainType.ERODED) {
+            if (cell.terrainType === TerrainType.ERODED) {
+                this._erodedCount++;
+            } else if (cell.terrainType === TerrainType.EROSION_SOURCE) {
+                this._hasErosionSource = true;
+            } else {
                 this._terrainCounts[cell.terrainType] = (this._terrainCounts[cell.terrainType] || 0) + 1;
             }
         }
+
+        // 终局一次性计分：地形正分（每块 +1）
+        for (const type in this._terrainCounts) {
+            this._totalScore += this._terrainCounts[type] * TERRAIN_UNIT_SCORE;
+        }
+
+        // 侵蚀源惩罚：存在则 -10 分
+        if (this._hasErosionSource) {
+            this._totalScore -= 10;
+        }
+
+        // 侵蚀地块惩罚：每块 -1 分
+        this._totalScore -= this._erodedCount;
     }
 
     /** 累加入住动物分数（每只 +5），注明动物类型 */
@@ -86,6 +101,9 @@ export class ScoreManager {
      *     岩石: 3块 × 1分 = 3分
      *     水域: 2块 × 1分 = 2分
      *     地形总分: 9分
+     *     侵蚀源惩罚: -10分          ← 仅当存在侵蚀源
+     *     侵蚀地块: 3块 × -1分 = -3分  ← 仅当有侵蚀地块
+     *     地形净分: -4分
      *
      *   【动物得分】
      *     野牛: 2只 × 5分 = 10分
@@ -93,7 +111,7 @@ export class ScoreManager {
      *     动物总分: 15分
      *
      *   ━━━━━━━━━━━━━━━━
-     *   总分: 24分
+     *   总分: 11分
      */
     getScoreSummary(): string {
         const lines: string[] = [''];
@@ -108,6 +126,17 @@ export class ScoreManager {
             const label = TERRAIN_DISPLAY[type] || type;
             lines.push(`  ${label}: ${count}块 × ${TERRAIN_UNIT_SCORE}分 = ${pts}分`);
             terrainTotal += pts;
+        }
+
+        // ── 侵蚀惩罚（如果有） ──
+        if (this._hasErosionSource) {
+            terrainTotal -= 10;
+            lines.push(`  侵蚀源惩罚: -10分`);
+        }
+        if (this._erodedCount > 0) {
+            const erodedPts = this._erodedCount * 1;
+            terrainTotal -= erodedPts;
+            lines.push(`  侵蚀地块: ${this._erodedCount}块 × -1分 = -${erodedPts}分`);
         }
         lines.push(`  地形总分: ${terrainTotal}分\n`);
 
@@ -133,6 +162,8 @@ export class ScoreManager {
     reset(): void {
         this._totalScore = 0;
         this._terrainCounts = {};
+        this._erodedCount = 0;
+        this._hasErosionSource = false;
         this._animalCounts = {};
     }
 }

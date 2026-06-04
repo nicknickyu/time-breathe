@@ -354,11 +354,8 @@ export class GameController extends Component {
         }
     }
 
-    /** 演化完成：计算本轮分数，进入下一轮或入住阶段 */
+    /** 演化完成：进入下一轮或入住阶段 */
     private _onEvolutionComplete(): void {
-        const roundScore = ScoreManager.instance.calculateRoundScore();
-        ScoreManager.instance.addRoundScore(roundScore);
-
         this._currentRound++;
         if (this._currentRound <= this._maxRounds) {
             this._startDrawPhase();
@@ -441,7 +438,7 @@ export class GameController extends Component {
         this.node.addChild(dialogNode);
         const dialogView = dialogNode.getComponent(ConfirmDialogView);
         if (dialogView) {
-            dialogView.setPanelHeight(640);
+            dialogView.setPanelHeight(720);
             dialogView.setTitle('游戏结束');
             dialogView.setButtonText('再来一局');
             dialogView.show(
