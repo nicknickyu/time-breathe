@@ -310,18 +310,47 @@ export class GameController extends Component {
         this._tickCount++;
         const changes = TerrainEvolutionManager.instance.tick();
 
-        // Apply visual updates for every change
-        for (const change of changes) {
+        // 拆分为非侵蚀与侵蚀两组：先播放非侵蚀动画，再播放侵蚀动画
+        const nonEroded = changes.filter(c => c.terrainType !== TerrainType.ERODED);
+        const eroded = changes.filter(c => c.terrainType === TerrainType.ERODED);
+
+        // Phase 1: 非侵蚀变化（0.8s 过渡动画）
+        for (const change of nonEroded) {
             if (this._gridView) {
                 this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.8);
                 this._gridView.setCellHeight(change.col, change.row, change.height);
             }
         }
 
-        if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
-            this.scheduleOnce(() => this._doEvolutionTick(), 0.8);
+        // Phase 2: 非侵蚀动画完成后播放侵蚀变化（先飞入 0.4s → 再渐变 0.8s）
+        const playEroded = (): void => {
+            for (const change of eroded) {
+                if (this._gridView) {
+                    // 先从最近的侵蚀源飞出侵蚀标记（0.4s）
+                    this._gridView.playErosionFlyEffect(change.col, change.row, 0.4);
+                    // 飞行到达后再开始格子渐变（延迟 0.4s 后播放 0.8s 过渡）
+                    this.scheduleOnce(() => {
+                        this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.4);
+                        this._gridView.setCellHeight(change.col, change.row, change.height);
+                    }, 0.4);
+                }
+            }
+
+            // Phase 3: 所有侵蚀动画完成后继续下一 tick 或结束
+            const erodedDuration = eroded.length > 0 ? 0.4 + 0.4 : 0.8;
+            this.scheduleOnce(() => {
+                if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
+                    this._doEvolutionTick();
+                } else {
+                    this._onEvolutionComplete();
+                }
+            }, erodedDuration);
+        };
+
+        if (nonEroded.length > 0) {
+            this.scheduleOnce(playEroded, 0.8);
         } else {
-            this._onEvolutionComplete();
+            playEroded();
         }
     }
 

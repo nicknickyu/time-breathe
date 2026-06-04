@@ -1,4 +1,4 @@
-import { _decorator, Component, Prefab, Node, instantiate, Vec3 } from 'cc';
+import { _decorator, Component, Prefab, Node, instantiate, Vec3, Sprite, UITransform, tween } from 'cc';
 import { TerrainType } from '../data/TerrainType';
 import { HexGridManager } from '../logic/HexGridManager';
 import { HexCellView } from './HexCellView';
@@ -96,6 +96,78 @@ export class GridView extends Component {
         if (rockView) {
             rockView.setHeight(height);
         }
+    }
+
+    /**
+     * 从最近的侵蚀源飞出一个侵蚀标记到目标格子位置
+     * 创建临时 Sprite 节点，沿抛物线弧飞向目标并自旋，到达后销毁
+     */
+    playErosionFlyEffect(col: number, row: number, duration: number): void {
+        const mgr = HexGridManager.instance;
+
+        // 1. 查找最近的侵蚀源坐标
+        let sourceCol = -1;
+        let sourceRow = -1;
+        let nearestDist = Infinity;
+
+        for (const cell of mgr.getAllCells()) {
+            if (cell.terrainType === TerrainType.EROSION_SOURCE) {
+                const dist = Math.abs(cell.gridX - col) + Math.abs(cell.gridY - row);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    sourceCol = cell.gridX;
+                    sourceRow = cell.gridY;
+                }
+            }
+        }
+
+        if (sourceCol < 0) return; // 没有侵蚀源
+
+        // 2. 获取起止位置（相对于 GridView 节点坐标系）
+        const startNode = this._cellNodes.get(`${sourceCol},${sourceRow}`);
+        const endNode = this._cellNodes.get(`${col},${row}`);
+        if (!startNode || !endNode) return;
+
+        const startPos = startNode.getPosition();
+        const endPos = endNode.getPosition();
+
+        // 3. 获取标记贴图（没有则跳过）
+        const markerSf = this._spriteConfig!.erosionSourceMarkerSprite;
+        if (!markerSf) return;
+
+        const flyNode = new Node('ErosionFlyEffect');
+        const sprite = flyNode.addComponent(Sprite);
+        sprite.spriteFrame = markerSf;
+        const uiTransform = flyNode.addComponent(UITransform);
+        uiTransform.width = 24;
+        uiTransform.height = 24;
+
+        this.node.addChild(flyNode);
+        flyNode.setPosition(startPos);
+
+        // 4. 抛物线弧飞行
+        const arcHeight = 60;
+        const animData = { t: 0 };
+
+        tween(animData)
+            .to(duration, { t: 1 }, {
+                onUpdate: () => {
+                    const t = animData.t;
+                    const x = startPos.x + (endPos.x - startPos.x) * t;
+                    const y = startPos.y + (endPos.y - startPos.y) * t
+                             + arcHeight * Math.sin(Math.PI * t);
+                    flyNode.setPosition(x, y);
+                },
+            })
+            .call(() => {
+                flyNode.destroy();
+            })
+            .start();
+
+        // 自旋一周
+        tween(flyNode)
+            .to(duration, { angle: 360 })
+            .start();
     }
 
     /** 在指定格子上添加动物节点 */
