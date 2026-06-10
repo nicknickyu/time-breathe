@@ -535,8 +535,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 87.14058381965361,
-      "height": 50.39999999999999
+      "width": 87.14059105531418,
+      "height": 50.400000000000006
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -568,7 +568,7 @@
     "_string": "Stage",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 33.2,
+    "_actualFontSize": 37.4,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -849,7 +849,7 @@
     "_string": "设置",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 33.2,
+    "_actualFontSize": 37.4,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -1496,6 +1496,10 @@
     },
     "infoCardPrefab": {
       "__uuid__": "5e0ae5c7-2c26-4e81-a092-c4f4da974c8e",
+      "__expectedType__": "cc.Prefab"
+    },
+    "thunderVFXPrefab": {
+      "__uuid__": "2793aac0-be1c-49e4-a5f8-7c810748f0d9",
       "__expectedType__": "cc.Prefab"
     },
     "settingsButton": {

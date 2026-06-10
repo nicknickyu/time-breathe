@@ -47,6 +47,9 @@ export class GameController extends Component {
     @property(Prefab)
     infoCardPrefab: Prefab | null = null;
 
+    @property({ type: Prefab, tooltip: '闪电特效预制体（ThunderVFX）' })
+    thunderVFXPrefab: Prefab | null = null;
+
     @property(Node)
     settingsButton: Node | null = null;
 
@@ -86,6 +89,7 @@ export class GameController extends Component {
         this.node.addChild(gridRoot);
         this._gridView = gridRoot.addComponent(GridView);
         this._gridView.init(this.hexCellPrefab, this.spriteConfig!);
+        this._gridView.thunderVFXPrefab = this.thunderVFXPrefab;
         this._gridView.buildGrid();
 
         // 2.1) Update visual for erosion source cell
@@ -353,7 +357,7 @@ export class GameController extends Component {
         // Phase 1: 非侵蚀变化（0.8s 过渡动画）
         for (const change of nonEroded) {
             if (this._gridView) {
-                this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.8);
+                this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.5);
                 this._gridView.setCellHeight(change.col, change.row, change.height);
             }
         }
@@ -362,18 +366,20 @@ export class GameController extends Component {
         const playEroded = (): void => {
             for (const change of eroded) {
                 if (this._gridView) {
-                    // 先从最近的侵蚀源飞出侵蚀标记（0.4s）
-                    this._gridView.playErosionFlyEffect(change.col, change.row, 0.4);
+                    // // 先从最近的侵蚀源飞出侵蚀标记（0.4s）
+                    // this._gridView.playErosionFlyEffect(change.col, change.row, 0.4);
+                    // 同时从最近侵蚀源释放闪电特效（0.3s 颜色渐变）
+                    this._gridView.playThunderVFXEffect(change.col, change.row, 0.8);
                     // 飞行到达后再开始格子渐变（延迟 0.4s 后播放 0.8s 过渡）
                     this.scheduleOnce(() => {
-                        this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.4);
+                        this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.5);
                         this._gridView.setCellHeight(change.col, change.row, change.height);
-                    }, 0.4);
+                    }, 0.1);
                 }
             }
 
             // Phase 3: 所有侵蚀动画完成后继续下一 tick 或结束
-            const erodedDuration = eroded.length > 0 ? 0.4 + 0.4 : 0.8;
+            const erodedDuration = eroded.length > 0 ? 0.8 : 0.5;
             this.scheduleOnce(() => {
                 if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
                     this._doEvolutionTick();
@@ -384,7 +390,7 @@ export class GameController extends Component {
         };
 
         if (nonEroded.length > 0) {
-            this.scheduleOnce(playEroded, 0.8);
+            this.scheduleOnce(playEroded, 0.5);
         } else {
             playEroded();
         }
