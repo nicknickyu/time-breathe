@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Sprite, SpriteFrame, Label, UITransform, Vec3, Color } from 'cc';
+import { _decorator, Component, Node, Sprite, SpriteFrame, Label, UITransform, Vec3, Color, tween } from 'cc';
 const { ccclass } = _decorator;
 
 /**
@@ -17,7 +17,7 @@ export class AnimalView extends Component {
      * @param spriteFrame animal image
      * @param count null = hide Cnt (settled animals), number = show count (target animals)
      */
-    init(spriteFrame: SpriteFrame, count: number | null): void {
+    init(spriteFrame: SpriteFrame, count: number | null, scale: number = 1): void {
         // Top sprite
         const top = this.node.getChildByName('Top');
         if (top) {
@@ -38,6 +38,9 @@ export class AnimalView extends Component {
         } else {
             this._cntNode!.active = false;
         }
+
+        // 播放出场动画
+        this.playSpawnAnimation(scale);
     }
 
     private _createCntNode(): void {
@@ -57,6 +60,19 @@ export class AnimalView extends Component {
 
         this._cntNode = node;
         this._cntLabel = label;
+    }
+
+    /**
+     * 播放生成出场动画：由很小变大 → 超过正常大小 → 缩回正常
+     * 持续 0.3 秒
+     */
+    playSpawnAnimation(scale: number): void {
+        this.node.setScale(new Vec3(0, 0, 0));
+        const overshoot = scale * 1.2;
+        tween(this.node)
+            .to(0.15, { scale: new Vec3(overshoot, overshoot, 1) }, { easing: 'sineOut' })
+            .to(0.15, { scale: new Vec3(scale, scale, 1) }, { easing: 'sineOut' })
+            .start();
     }
 
     setCount(count: number): void {

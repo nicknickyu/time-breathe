@@ -1,4 +1,4 @@
-import { _decorator, Component, Prefab, instantiate, Node, Label, Vec3, director } from 'cc';
+import { _decorator, Component, Prefab, instantiate, Node, Label, Vec3, director, Sprite, UITransform, tween } from 'cc';
 import { ConfirmDialogView } from '../views/ConfirmDialogView';
 import { HexGridManager } from '../logic/HexGridManager';
 import { DrawManager } from '../logic/DrawManager';
@@ -14,6 +14,7 @@ import { AnimalView } from '../views/AnimalView';
 import { GAME_INTRO_TEXT } from '../constants/GameTextConfig';
 import { SpriteConfig } from '../constants/SpriteConfig';
 import { TerrainType } from '../data/TerrainType';
+import { TimerView } from '../views/TimerView';
 const { ccclass, property } = _decorator;
 
 /**
@@ -50,6 +51,9 @@ export class GameController extends Component {
     @property({ type: Prefab, tooltip: '闪电特效预制体（ThunderVFX）' })
     thunderVFXPrefab: Prefab | null = null;
 
+    @property({ type: Prefab, tooltip: '演化回合计时器' })
+    timerPrefab: Prefab | null = null;
+
     @property(Node)
     settingsButton: Node | null = null;
 
@@ -68,6 +72,7 @@ export class GameController extends Component {
     private _currentRound: number = 1;
     private _maxRounds: number = 3;
     private _tickCount: number = 0;
+    private _timerView: TimerView | null = null;
 
     start(): void {
         this._initGameSetup();
@@ -81,8 +86,8 @@ export class GameController extends Component {
         // 1) Grid data
         HexGridManager.instance.generateGrid(12, 4);
 
-        // 1.1) Place erosion source on a random non-corner cell
-        const erosionPos = HexGridManager.instance.placeErosionSourceAtRandom();
+        // 1.1) Place erosion source on a random non-corner cell (data layer only)
+        HexGridManager.instance.placeErosionSourceAtRandom();
 
         // 2) Grid view
         const gridRoot = new Node('GridRoot');
@@ -91,11 +96,6 @@ export class GameController extends Component {
         this._gridView.init(this.hexCellPrefab, this.spriteConfig!);
         this._gridView.thunderVFXPrefab = this.thunderVFXPrefab;
         this._gridView.buildGrid();
-
-        // 2.1) Update visual for erosion source cell
-        if (erosionPos) {
-            this._gridView.updateCellVisual(erosionPos.col, erosionPos.row, TerrainType.EROSION_SOURCE);
-        }
 
         this._gridView.onCellTap((col, row) => this._onGridCellTapped(col, row));
 
@@ -202,19 +202,17 @@ export class GameController extends Component {
 
     /** 进入目标动物展示阶段 */
     private _startTargetAnimalPhase(): void {
-        this._showInfoCard('目标动物阶段', () => {
-            AnimalSettlementManager.instance.generateTargetAnimals();
-            this._showTargetAnimal(0);
-        });
+        // this._showInfoCard('目标动物阶段', () => {
+        AnimalSettlementManager.instance.generateTargetAnimals();
+        this._showTargetAnimal(0);
+        // });
     }
 
     /** 逐个显示目标动物（每 500ms 一个），显示完后进入抽取阶段 */
     private _showTargetAnimal(index: number): void {
         const animals = AnimalSettlementManager.instance.targetAnimals;
         if (index >= animals.length) {
-            this._showInfoCard('抽取地形阶段', () => {
-                this._startDrawPhase();
-            });
+            this._onTargetAnimalsFinished();
             return;
         }
 
@@ -236,6 +234,86 @@ export class GameController extends Component {
         }
 
         this.scheduleOnce(() => this._showTargetAnimal(index + 1), 0.5);
+    }
+
+    /** 目标动物展示完成后播放侵蚀源出现动画，结束后进入抽取阶段 */
+    private _onTargetAnimalsFinished(): void {
+        this._playErosionSourceAppearAnimation(() => {
+            this._showInfoCard('抽取地形阶段', () => {
+                this._startDrawPhase();
+            });
+        });
+    }
+
+    /**
+     * 侵蚀源出现动画
+     * 从 main 节点正中心由小到 3 倍大小出现 → 抖动 → 缩回 1 倍并落到侵蚀源格子位置
+     */
+    private _playErosionSourceAppearAnimation(callback: () => void): void {
+        const mgr = HexGridManager.instance;
+        const erosionCell = mgr.getAllCells().find(c => c.terrainType === TerrainType.EROSION_SOURCE);
+        if (!erosionCell || !this._gridView) {
+            callback();
+            return;
+        }
+
+        const markerSf = this.spriteConfig!.erosionSourceMarkerSprite;
+        if (!markerSf) {
+            callback();
+            return;
+        }
+
+        // 获取目标格子位置（GridView 相对 this.node 在原点，格子位置可直接用）
+        const cellNode = this._gridView.getAllCellNodes().get(`${erosionCell.gridX},${erosionCell.gridY}`);
+        if (!cellNode) {
+            callback();
+            return;
+        }
+        const targetPos = cellNode.getPosition().clone().add(new Vec3(0, 15, 0)); // 标记位置稍微高于格子中心
+
+        // 创建临时标记节点，从 main 节点中心开始
+        const markerNode = new Node('ErosionSourceAppear');
+        const sprite = markerNode.addComponent(Sprite);
+        sprite.spriteFrame = markerSf;
+        const uiTransform = markerNode.addComponent(UITransform);
+        uiTransform.setContentSize(40, 40);
+
+        markerNode.setPosition(Vec3.ZERO);
+        markerNode.setScale(0, 0, 1);
+        this.node.addChild(markerNode);
+
+        const growDuration = 0.5;
+        const landDuration = 0.5;
+
+        // Phase 1: 从 0 放大到 3 倍
+        // Phase 2: 抖动
+        // Phase 3: 缩回 1 倍 + 飞向目标格子
+        tween(markerNode)
+            // Phase 1: 放大到 3 倍（backOut 产生轻微过冲效果）
+            .to(growDuration, { scale: new Vec3(3, 3, 1) }, { easing: 'backOut' })
+            // Phase 2: 抖动 — 快速左右摆动衰减
+            .to(0.05, { position: new Vec3(10, 0, 0) })
+            .to(0.05, { position: new Vec3(-10, 0, 0) })
+            .to(0.04, { position: new Vec3(8, 0, 0) })
+            .to(0.04, { position: new Vec3(-8, 0, 0) })
+            .to(0.04, { position: new Vec3(5, 0, 0) })
+            .to(0.04, { position: new Vec3(-5, 0, 0) })
+            .to(0.04, { position: new Vec3(3, 0, 0) })
+            .to(0.04, { position: new Vec3(0, 0, 0) })
+            // Phase 3: 同时缩回 1 倍并飞向目标格子
+            .parallel(
+                tween(markerNode)
+                    .to(landDuration, { scale: new Vec3(1, 1, 1) }, { easing: 'sineOut' }),
+                tween(markerNode)
+                    .to(landDuration, { position: targetPos }, { easing: 'sineOut' }),
+            )
+            .call(() => {
+                // 动画完成：更新目标格子的侵蚀源视觉
+                this._gridView!.updateCellVisual(erosionCell.gridX, erosionCell.gridY, TerrainType.EROSION_SOURCE);
+                markerNode.destroy();
+                callback();
+            })
+            .start();
     }
 
     // ── Draw phase ──
@@ -330,7 +408,7 @@ export class GameController extends Component {
 
     // ── Evolution phase ──
 
-    /** 进入演化阶段：隐藏手牌，开始地形自动演化 */
+    /** 进入演化阶段：隐藏手牌，创建计时器，开始地形自动演化 */
     private _startEvolutionPhase(): void {
         this._showInfoCard('演化阶段', () => {
             GameStateManager.instance.setState(GamePhase.EVOLVE);
@@ -338,6 +416,16 @@ export class GameController extends Component {
             // Hide hand cards
             if (this._handCardView) this._handCardView.clear();
             this._selectedHandIndex = -1;
+
+            // 创建演化回合计时器
+            if (this.timerPrefab) {
+                const timerNode = instantiate(this.timerPrefab);
+                this.node.addChild(timerNode);
+                this._timerView = timerNode.getComponent(TimerView);
+                if (this._timerView) {
+                    this._timerView.setNumber(0);
+                }
+            }
 
             this._tickCount = 0;
             TerrainEvolutionManager.instance.startEvolution(6);
@@ -348,13 +436,20 @@ export class GameController extends Component {
     /** 执行一次演化 tick 并更新视觉，完成后进入下一轮或结算 */
     private _doEvolutionTick(): void {
         this._tickCount++;
+
+        // 更新回合计时器
+        if (this._timerView) {
+            this._timerView.setNumber(this._tickCount);
+        }
+
         const changes = TerrainEvolutionManager.instance.tick();
+
 
         // 拆分为非侵蚀与侵蚀两组：先播放非侵蚀动画，再播放侵蚀动画
         const nonEroded = changes.filter(c => c.terrainType !== TerrainType.ERODED);
         const eroded = changes.filter(c => c.terrainType === TerrainType.ERODED);
 
-        // Phase 1: 非侵蚀变化（0.8s 过渡动画）
+        // Phase 1: 非侵蚀变化
         for (const change of nonEroded) {
             if (this._gridView) {
                 this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.5);
@@ -362,15 +457,13 @@ export class GameController extends Component {
             }
         }
 
-        // Phase 2: 非侵蚀动画完成后播放侵蚀变化（先飞入 0.4s → 再渐变 0.8s）
+        // Phase 2: 非侵蚀动画完成后播放侵蚀变化
         const playEroded = (): void => {
             for (const change of eroded) {
                 if (this._gridView) {
-                    // // 先从最近的侵蚀源飞出侵蚀标记（0.4s）
-                    // this._gridView.playErosionFlyEffect(change.col, change.row, 0.4);
-                    // 同时从最近侵蚀源释放闪电特效（0.3s 颜色渐变）
+                    // 同时从最近侵蚀源释放闪电特效
                     this._gridView.playThunderVFXEffect(change.col, change.row, 0.8);
-                    // 飞行到达后再开始格子渐变（延迟 0.4s 后播放 0.8s 过渡）
+                    // 飞行到达后再开始格子渐变
                     this.scheduleOnce(() => {
                         this._gridView.updateCellVisual(change.col, change.row, change.terrainType, 0.5);
                         this._gridView.setCellHeight(change.col, change.row, change.height);
@@ -380,13 +473,7 @@ export class GameController extends Component {
 
             // Phase 3: 所有侵蚀动画完成后继续下一 tick 或结束
             const erodedDuration = eroded.length > 0 ? 0.8 : 0.5;
-            this.scheduleOnce(() => {
-                if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
-                    this._doEvolutionTick();
-                } else {
-                    this._onEvolutionComplete();
-                }
-            }, erodedDuration);
+            this.scheduleOnce(() => this._scheduleNextTickOrComplete(), erodedDuration);
         };
 
         if (nonEroded.length > 0) {
@@ -396,8 +483,23 @@ export class GameController extends Component {
         }
     }
 
-    /** 演化完成：进入下一轮或入住阶段 */
+    /** tick 未完成时递归继续，已完成时进入下一轮/结算 */
+    private _scheduleNextTickOrComplete(): void {
+        if (this._tickCount < TerrainEvolutionManager.instance.maxTicks) {
+            this._doEvolutionTick();
+        } else {
+            this._onEvolutionComplete();
+        }
+    }
+
+    /** 演化完成：销毁计时器，进入下一轮或入住阶段 */
     private _onEvolutionComplete(): void {
+        // 销毁回合计时器
+        if (this._timerView) {
+            this._timerView.node.destroy();
+            this._timerView = null;
+        }
+
         this._currentRound++;
         if (this._currentRound <= this._maxRounds) {
             this._startDrawPhase();
@@ -444,7 +546,6 @@ export class GameController extends Component {
 
             if (this.animalPrefab && spriteFrame) {
                 const animalNode = instantiate(this.animalPrefab);
-                animalNode.setScale(new Vec3(0.6, 0.6, 1));
 
                 // Adjust Y offset for ROCK cell height (OWL)
                 const cellData = HexGridManager.instance.getCell(cell.col, cell.row);
@@ -454,7 +555,7 @@ export class GameController extends Component {
                 }
 
                 const view = animalNode.addComponent(AnimalView);
-                view.init(spriteFrame, null);
+                view.init(spriteFrame, null, 0.6);
             }
 
             animal.settledCount++;

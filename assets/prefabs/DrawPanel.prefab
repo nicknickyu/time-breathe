@@ -157,7 +157,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -120,
+      "y": -110.489,
       "z": 0
     },
     "_lrot": {
@@ -286,8 +286,8 @@
     "_string": "确认",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 23.375,
-    "_fontSize": 20,
+    "_actualFontSize": 32.725,
+    "_fontSize": 28,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
     "_overflow": 1,
@@ -356,8 +356,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 100,
-      "height": 40
+      "width": 200,
+      "height": 80
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -502,7 +502,7 @@
     "_left": 0,
     "_right": 0,
     "_top": 0,
-    "_bottom": 20,
+    "_bottom": 9.510999999999996,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
     "_isAbsLeft": true,
@@ -805,7 +805,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 160,
-      "height": 220
+      "height": 200
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -945,7 +945,7 @@
     "_target": null,
     "_left": 30,
     "_right": 0,
-    "_top": 20,
+    "_top": 30,
     "_bottom": 0,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
@@ -1189,7 +1189,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 160,
-      "height": 220
+      "height": 200
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1329,7 +1329,7 @@
     "_target": null,
     "_left": 20,
     "_right": 0,
-    "_top": 20,
+    "_top": 30,
     "_bottom": 0,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
@@ -1573,7 +1573,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 160,
-      "height": 220
+      "height": 200
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1713,7 +1713,7 @@
     "_target": null,
     "_left": 20,
     "_right": 30,
-    "_top": 20,
+    "_top": 30,
     "_bottom": 0,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
@@ -1925,7 +1925,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 143.9999373328877,
+      "width": 167.97433781751337,
       "height": 50.400000000000006
     },
     "_anchorPoint": {
@@ -1964,8 +1964,8 @@
     "_string": "选取一组地形",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 28.049999999999997,
-    "_fontSize": 24,
+    "_actualFontSize": 32.725,
+    "_fontSize": 28,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
     "_overflow": 0,
